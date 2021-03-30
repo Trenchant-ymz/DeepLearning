@@ -32,6 +32,7 @@ class ObdData(Dataset):
 
 def main():
     db = ObdData("20", "train")
+    print("test git")
 
 
 if __name__ == "__main__":
