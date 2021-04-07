@@ -24,7 +24,7 @@ class ObdData(Dataset):
         self.path_length = path_length
         # print(os.path.join(self.root, mode+"_data.csv"))
         self.data_list_w, self.label_list_w = self.load_csv(self.mode + "_data.csv")
-        print(self.__len__())
+        #print(self.__len__())
         #print(self.__getitem__(-1))
         # print(self.data_list[-1])
         # print(self.label_list[-1])
@@ -51,6 +51,7 @@ class ObdData(Dataset):
                 reader = csv.reader(f)
 
                 for row in reader:
+
                     data, label, segment_id, length, position = row
                     # length -> the number of segments in the trip
                     data = list(map(float, data[1:-1].split(", ")))
@@ -119,7 +120,7 @@ def main():
     db = ObdData("model_data", "train", percentage=20)
 
     x, y = next(iter(db))
-    # print("data:", x, "label:", y)
+    print("data:", x, "label:", y)
     loader = DataLoader(db, batch_size= 2, shuffle= False, num_workers=4)
     for x,y in loader:
         #print(x,y)
@@ -132,7 +133,7 @@ def main():
         # [window size, batch ,feature dimension]
         x_one_path = x_one_path.transpose(0,1).contiguous()
         print(x_one_path.shape)
-        print(x_one_path)
+        #print(x_one_path)
         break
 
 
