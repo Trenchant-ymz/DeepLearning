@@ -7,26 +7,37 @@ import os, glob
 import random, csv
 from torch.utils.data import Dataset, DataLoader
 from obddata import ObdData
-from nets import FFNet4, AttentionBlk
+from nets import AttentionBlk
 import numpy as np
 import time
 import torch.nn.functional as F
 
 batchsz = 32
-lr = 1e-4
-epochs = 100
+lr = 1e-3
+epochs = 3000
+#epochs = 0
 torch.manual_seed(1234)
 output_dimension = 2
 feature_dimension = 8
 head_number = 1
-# device = torch.device("cuda")
+train_path_length = 10
+test_path_length = 10
+device = torch.device("cuda")
+#device = torch.device("cpu")
 
-train_db = ObdData("model_data",mode = "train",percentage=20)
-val_db = ObdData("model_data",mode="val",percentage=20)
-test_db = ObdData("model_data",mode="test",percentage=20)
-train_loader = DataLoader(train_db, batch_size=batchsz, num_workers=4)
-val_loader = DataLoader(val_db, batch_size=batchsz, num_workers=4)
-test_loader = DataLoader(test_db, batch_size=batchsz, num_workers=4)
+# in Google Colab
+ckpt_path = "/content/drive/MyDrive/Colab_Notebooks/DeepLearning/best.mdl"
+data_root = "/content/drive/MyDrive/Colab_Notebooks/DeepLearning/model_data"
+# local
+#ckpt_path = "best.mdl"
+#data_root = "model_data"
+
+train_db = ObdData(root=data_root,mode = "train",percentage=20, path_length=train_path_length)
+val_db = ObdData(root=data_root,mode="val",percentage=20, path_length=train_path_length)
+test_db = ObdData(root=data_root,mode="test",percentage=20, path_length=test_path_length)
+train_loader = DataLoader(train_db, batch_size=batchsz, num_workers=2)
+val_loader = DataLoader(val_db, batch_size=batchsz, num_workers=2)
+test_loader = DataLoader(test_db, batch_size=batchsz, num_workers=2)
 
 '''
 viz = visdom.Visdom()
@@ -66,10 +77,10 @@ def test(model, loader):
     loss_mse = 0
     cnt = 0
     for x, y in loader:
-        # x,y = x.to(device), y.to(device)
+        x,y = x.to(device), y.to(device)
         with torch.no_grad():
-            label_segment = torch.zeros(y.shape[0], output_dimension)
-            pred_segment = torch.zeros(y.shape[0], output_dimension)
+            label_segment = torch.zeros(y.shape[0], output_dimension).to(device)
+            pred_segment = torch.zeros(y.shape[0], output_dimension).to(device)
             for i in range(x.shape[1]):
                 # [batch size, window length, feature dimension]
                 x_segment = x[:, i, :, :]
@@ -131,22 +142,25 @@ def evalute(model, loader):
 '''
 
 
-
 def main():
-
     model = AttentionBlk(feature_dimension, head_number)
-    # model.to(device)
+
+    if os.path.exists(ckpt_path):
+        model.load_state_dict(torch.load(ckpt_path))
+        print("load from ckpt!")
+    else:
+        for p in model.parameters():
+            if p.dim() > 1:
+                nn.init.xavier_uniform_(p)
+    model.to(device)
     print(model)
 
-    for p in model.parameters():
-        if p.dim() > 1:
-            nn.init.xavier_uniform_(p)
     # this code is very important! It initialises the parameters with a
     # range of values that stops the signal fading or getting too big.
     # See this blog for a mathematical explanation.
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, betas=(0.9, 0.98), eps=1e-9)
     # optimizer = torch.optim.SGD(model.parameters(), lr=lr)
-    #optimizer = optim.Adam(model.parameters(),lr=lr)
+    # optimizer = optim.Adam(model.parameters(),lr=lr)
     p = sum(map(lambda p: p.numel(), model.parameters()))
     print("number of parameters:", p)
 
@@ -161,27 +175,23 @@ def main():
     test+= a_pred
     loss = criteon(a_pred,a_label)
     print(test)
-    
+
     '''
 
-
-    
     best_mse, best_epoch = float("inf"), 0
     global_step = 0
 
-
     for epoch in range(epochs):
-        
 
-        for step, (x,y) in enumerate(train_loader):
-            #print(step)
-            # x,y = x.to(device), y.to(device)
+        for step, (x, y) in enumerate(train_loader):
+            # print(step)
+            x, y = x.to(device), y.to(device)
             # [batch size, path length, window length, feature dimension/output dimension]
-            #print(x.shape, y.shape)
+            # print(x.shape, y.shape)
             loss_total = 0
 
-            label_segment = torch.zeros(y.shape[0],output_dimension)
-            pred_segment = torch.zeros(y.shape[0],output_dimension)
+            label_segment = torch.zeros(y.shape[0], output_dimension).to(device)
+            pred_segment = torch.zeros(y.shape[0], output_dimension).to(device)
 
             for i in range(x.shape[1]):
                 # [batch size, window length, feature dimension]
@@ -190,47 +200,43 @@ def main():
                 x_segment = x_segment.transpose(0, 1).contiguous()
                 # [batch size, output dimension]
                 pred = model(x_segment)
-                #print("pred",pred)
-                #print(pred_segment.shape, pred.shape)
+                # print("pred",pred)
+                # print(pred_segment.shape, pred.shape)
                 pred_segment += pred
-                #print("pred_segment",pred_segment)
-                #print(result_segment.shape)
+                # print("pred_segment",pred_segment)
+                # print(result_segment.shape)
                 # [window size, batch size, output dimension]
                 y_segment = y[:, i, :, :].transpose(0, 1).contiguous()
-                #print("y_segment", y_segment.shape)
-                label = y_segment[y_segment.shape[0]//2, :, :]
-                #print("label", label)
+                # print("y_segment", y_segment.shape)
+                label = y_segment[y_segment.shape[0] // 2, :, :]
+                # print("label", label)
                 label_segment += label
-                #print(label_segment.shape)
-                #break
+                # print(label_segment.shape)
+                # break
             loss = criteon(label_segment, pred_segment)
-            #print(label_segment,pred_segment)
-            #print(loss)
+            # print(label_segment,pred_segment)
+            # print(loss)
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-            #break
-        #break
+            # break
+        # break
         # viz.line([loss], [global_step], win="mape",update="append")
-        global_step+= 1
-        if epoch% 5 == 0:
+        global_step += 1
+        if epoch % 10 == 0:
             val_mape, val_mse = test(model, val_loader)
-            print("val_mape", val_mape,"val_mse", val_mse)
+            print("epoch", epoch, "val_mape", val_mape, "val_mse", val_mse)
             if val_mse < best_mse:
                 best_epoch = epoch
                 best_mse = val_mse
-                torch.save(model.state_dict(),"best.mdl")
+                torch.save(model.state_dict(), ckpt_path)
             # viz.line([val_mape], [global_step], win="val_mape", update="append")
-    print("best_mse",best_mse,"best_epoch", best_epoch)
+    print("best_mse", best_mse, "best_epoch", best_epoch)
 
-
-
-
-
-    model.load_state_dict(torch.load("best.mdl"))
+    model.load_state_dict(torch.load(ckpt_path))
     print("load from ckpt!")
     test_mape, test_mse = test(model, test_loader)
-    #test_mape_tt, test_mape_e, test_mape_t = evalute(model, test_loader)
+    # test_mape_tt, test_mape_e, test_mape_t = evalute(model, test_loader)
     print("test_mape", test_mape)
 
     print("test_mse", test_mse)
