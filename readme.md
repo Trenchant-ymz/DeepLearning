@@ -25,3 +25,5 @@ Change Log
 Version 1.0
 
 Version 1.1: In [main.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/main.py): Add "map_location=device" in "model.load_state_dict()".
+
+Version 1.2: np.array(tensor.cpu())
