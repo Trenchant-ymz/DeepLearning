@@ -23,3 +23,5 @@ Change Log
 
 ### 2021/4/10
 Version 1.0
+
+Version 1.1: In [main.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/main.py): Add "map_location=device" in "model.load_state_dict()".
