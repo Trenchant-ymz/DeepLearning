@@ -133,7 +133,7 @@ def train():
     model = AttentionBlk(feature_dimension, head_number)
     if os.path.exists(ckpt_path):
         print('Reloading model parameters..')
-        model.load_state_dict(torch.load(ckpt_path))
+        model.load_state_dict(torch.load(ckpt_path, map_location=device))
     else:
         print('Creating new model parameters..')
         # this code is very important! It initialises the parameters with a
@@ -213,7 +213,7 @@ def test(output = False):
     model = AttentionBlk(feature_dimension, head_number)
     if os.path.exists(ckpt_path):
         print('Reloading model parameters..')
-        model.load_state_dict(torch.load(ckpt_path))
+        model.load_state_dict(torch.load(ckpt_path, map_location=device))
     else:
         print('Error: no existing model')
     model.to(device)
