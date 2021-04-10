@@ -116,8 +116,8 @@ def eval(model, loader, output = False):
                 label_segment += label
                 if output:
                     for j in range(y.shape[0]):
-                        writer.writerow([id, np.array(label[j,0]), np.array(label[j,1]), np.array(pred[j,0]),\
-                                         np.array(pred[j,1])])
+                        writer.writerow([id, np.array(label[j,0].cpu()), np.array(label[j,1].cpu()), np.array(pred[j,0].cpu()),\
+                                         np.array(pred[j,1].cpu())])
                         id += 1
             loss_mse += F.mse_loss(label_segment, pred_segment)*y.shape[0]
             loss_mape += mape_loss(label_segment, pred_segment)*y.shape[0]
@@ -193,13 +193,13 @@ def train():
 
         if epoch % 10 == 0:
             val_mape, val_mse = eval(model, val_loader)
-            print("epoch:", epoch, "val_mape(%):", np.array(val_mape)*100, "val_mse:", np.array(val_mse))
+            print("epoch:", epoch, "val_mape(%):", np.array(val_mape.cpu())*100, "val_mse:", np.array(val_mse.cpu()))
             if val_mse < best_mse:
                 best_epoch = epoch
                 best_mse = val_mse
                 torch.save(model.state_dict(), ckpt_path)
 
-    print("best_epoch:", best_epoch, "best_mape(%):", np.array(best_mape)*100, "best_mse:", best_mse)
+    print("best_epoch:", best_epoch, "best_mape(%):", np.array(best_mape.cpu())*100, "best_mse:", np.array(best_mse.cpu()))
 
 
 def test(output = False):
@@ -221,8 +221,8 @@ def test(output = False):
     p = sum(map(lambda p: p.numel(), model.parameters()))
     print("number of parameters:", p)
     test_mape, test_mse = eval(model, test_loader, output = output)
-    print("test_mape(%):", np.array(test_mape)*100)
-    print("test_mse:", np.array(test_mse))
+    print("test_mape(%):", np.array(test_mape.cpu()) * 100)
+    print("test_mse:", np.array(test_mse.cpu()))
 
 
 def main(mode, output = False):
