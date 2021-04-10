@@ -9,6 +9,7 @@ import numpy as np
 import csv
 import time
 
+print(torch.__version__)
 # batch size
 batchsz = 32
 
@@ -224,7 +225,7 @@ def test(output = False):
     print("test_mse:", np.array(test_mse))
 
 
-def main(mode):
+def main(mode, output = False):
     """
     :param mode: "train" for training, "test" for testing the existing model or predicting
     :return:
@@ -232,9 +233,11 @@ def main(mode):
     if mode == "train":
         train()
     elif mode == "test":
-        test(output = True)
+        test(output = output)
 
 
 if __name__ == '__main__':
-    main("train")
+    main("test")
+    # main("test", output = True)
+    # main("train")
 
