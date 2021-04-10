@@ -19,7 +19,6 @@ The code works well with Python 3.7 and Pytorch 1.8.1.
 
 
 Change Log
-
 -----
 
 ### 2021/4/10
