@@ -6,7 +6,7 @@ The code works well with Python 3.7 and Pytorch 1.8.1.
 
 ## File Folders:
 
-1. Folder [data_normalized](https://github.com/Trenchant-ymz/DeepLearning/tree/master/data_normalized) contains normalized data used for taining/validation/testing. In file [data_description.md](https://github.com/Trenchant-ymz/DeepLearning/blob/master/data_normalized/data_description.md), we detail the data.
+1. Folder [data_normalized](https://github.com/Trenchant-ymz/DeepLearning/tree/master/data_normalized) contains normalized data used for taining/validation/testing. Refer to [data_description.md](https://github.com/Trenchant-ymz/DeepLearning/blob/master/data_normalized/data_description.md) for details of the data.
 
 ## Files
 
