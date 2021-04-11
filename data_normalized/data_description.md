@@ -1,4 +1,4 @@
-# Description of Data in Filefolder: data_normalized
+# Description of Data in Filefolder data_normalized
 
 ## Folders:
 
@@ -21,13 +21,13 @@ There are five columns in each csv file:
     - fuel consumption (*10ml*): *10ml* is used as the unit of fuel consumption so that fuel and time consumption are of the same order of magnitude.
     - time (*s*)
 3. segment_id : *id* of the segment
-4. length_of the trip: a trip is defined by a **real** trajectory; the length of a trip is defined as number of **segments** in the trip
+4. length of the trip: a trip is defined by a **real** trajectory; the length of a trip is defined as the number of **segments** in the trip
 5. position in the trip
 
 ## Data Format:
 There are eight features in a data list:
 1. position: relative position in trip
-    - mean before normalization: 74.207860;
+    - mean before normalization: 74.207860,
     - std before normalization: 70.476971 
 2. road type: sort road types according to their average speed limits:
     - mean: 16.630189, 
