@@ -9,8 +9,6 @@ In folder [20](https://github.com/Trenchant-ymz/DeepLearning/tree/master/data_no
 ## File Format:
 There are five columns in each csv file:
 1. data list (*Normalized*)
-    - position, 
-    - road type, 
     - speed limit, 
     - mass, 
     - elevation change, 
@@ -23,6 +21,13 @@ There are five columns in each csv file:
 3. segment_id : *id* of the segment
 4. length of the trip: a trip is defined by a **real** trajectory; the length of a trip is defined as the number of **segments** in the trip
 5. position in the trip
+6. road_type
+7. time_stage
+8. week_day
+9. lanes
+10. bridge
+11. endpoint_1
+12. endpoint_2
 
 ## Data Format:
 There are eight features in a data list:
