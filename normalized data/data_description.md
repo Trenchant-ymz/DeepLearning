@@ -1,4 +1,4 @@
-# Description of Data in Filefolder data_normalized
+# Description of Data in Filefolder "normalized data"
 
 ## Folders:
 
