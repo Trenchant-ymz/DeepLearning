@@ -1,0 +1,23 @@
+road type,value
+residential,0
+tertiary_link,1
+secondary_link,2
+primary_link,3
+"['tertiary', 'residential']",4
+"['unclassified', 'residential']",5
+"['secondary', 'motorway_link']",6
+"['motorway_link', 'trunk']",7
+"['secondary_link', 'secondary']",8
+trunk_link,9
+unclassified,10
+tertiary,11
+secondary,12
+primary,13
+"['tertiary', 'motorway_link']",14
+"['tertiary', 'secondary']",15
+trunk,16
+"['secondary', 'primary']",17
+motorway_link,18
+"['motorway', 'motorway_link']",19
+motorway,20
+"['motorway', 'trunk']",21
