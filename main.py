@@ -45,7 +45,7 @@ head_number = 1
 # length of path used for training/validation
 train_path_length = 10
 # length of path used for test
-test_path_length = 10
+test_path_length = 1
 
 # window size 3 best
 window_sz = 3
@@ -77,8 +77,8 @@ else:
 # local
 ckpt_path = "best_13d_fuel.mdl"
 #ckpt_path = "best_13d_time.mdl"
-#data_root = "model_data_new"
-data_root = "DataDifferentiated"
+data_root = "normalized data"
+#data_root = "DataDifferentiated"
 output_root = "prediction_result.csv"
 
 # load data
@@ -86,13 +86,11 @@ train_db = ObdData(root=data_root,mode = "train",percentage=20, window_size=wind
                    path_length=train_path_length, label_dimension=output_dimension, pace=pace_train)
 val_db = ObdData(root=data_root,mode="val",percentage=20,window_size=window_sz,\
                  path_length=test_path_length, label_dimension=output_dimension, pace=pace_test)
-test_db = ObdData(root=data_root,mode="notInTrainPlus10",percentage=20,window_size=window_sz,\
+test_db = ObdData(root=data_root,mode="test",percentage=20,window_size=window_sz,\
                   path_length=test_path_length, label_dimension=output_dimension, pace=pace_test)
 train_loader = DataLoader(train_db, batch_size=batchsz, num_workers=0)
 val_loader = DataLoader(val_db, batch_size=batchsz, num_workers=0)
 test_loader = DataLoader(test_db, batch_size=batchsz, num_workers=0)
-
-
 
 
 def denormalize(x_hat):
