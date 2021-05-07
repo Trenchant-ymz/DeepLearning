@@ -12,9 +12,6 @@ import visdom
 from tqdm import tqdm
 
 
-
-
-# print(torch.__version__)
 # batch size 512 BEST
 batchsz = 512
 
