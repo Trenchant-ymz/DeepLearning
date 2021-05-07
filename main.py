@@ -10,7 +10,6 @@ import csv
 import time
 import visdom
 from tqdm import tqdm
-#aaa
 
 # batch size 512 BEST
 batchsz = 512
