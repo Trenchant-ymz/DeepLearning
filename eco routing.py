@@ -31,25 +31,25 @@ import math
 
 class Point:
     def __init__(self, x, y):
-        Point.x = x
-        Point.y = y
+        self.x = x
+        self.y = y
 
 
 class OdPair:
     def __init__(self, origin, destination):
-        OdPair.origin = origin
-        OdPair.destination = destination
+        self.origin = origin
+        self.destination = destination
 
 
 class Box:
     def __init__(self, lonMin, lonMax, latMin, latMax):
-        Box.lonMin = lonMin
-        Box.lonMax = lonMax
-        Box.latMin = latMin
-        Box.latMax = latMax
+        self.lonMin = lonMin
+        self.lonMax = lonMax
+        self.latMin = latMin
+        self.latMax = latMax
 
     def polygon(self):
-        x1, x2, y1, y2 = Box.lonMin, Box.lonMax, Box.latMin, Box.latMax
+        x1, x2, y1, y2 = self.lonMin, self.lonMax, self.latMin, self.latMax
         return Polygon([(x1, y1), (x2, y1), (x2, y2), (x1, y2)])
 
 
@@ -58,14 +58,15 @@ class LocationRequest:
     def __init__(self):
         origin = Point(-93.2219, 44.979)
         destination = Point(-93.4696, 44.7854)
-        LocationRequest.odPair = OdPair(origin, destination)
-        LocationRequest.boundingBox = Box(-93.4696,-93.2219, 44.7854, 44.979)
+        self.odPair = OdPair(origin, destination)
+        self.boundingBox = Box(-93.4696,-93.2219, 44.7854, 44.979)
+
 
 class Graph:
-    def __init__(self,network_gdf, nodes_gdf, G):
-        Graph.network = network_gdf
-        Graph.nodes = nodes_gdf
-        Graph.g = G
+    def __init__(self, network_gdf, nodes_gdf, G):
+        self.network = network_gdf
+        self.nodes = nodes_gdf
+        self.g = G
 
 def main():
     locationRequest = LocationRequest()
