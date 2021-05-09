@@ -56,10 +56,16 @@ class Box:
 
 class LocationRequest:
     def __init__(self):
-        origin = Point(-93.2219, 44.979)
-        destination = Point(-93.4696, 44.7854)
+        # Murphy Depot
+        #origin = Point(-93.2219, 44.979)
+        origin = Point(-93.2466, 44.8959)
+        # Shakopee East (Depot):
+        #destination = Point(-93.4620, 44.7903)
+        #destination = Point(-93.4301, 44.8640)
+        destination = Point(-93.4495, 44.8611)
+
         self.odPair = OdPair(origin, destination)
-        self.boundingBox = Box(-93.4696,-93.2219, 44.7854, 44.979)
+        self.boundingBox = Box(-93.4975, -93.1850, 44.7458, 45.0045)
 
 
 class Graph:
@@ -70,60 +76,61 @@ class Graph:
 
 def main():
     locationRequest = LocationRequest()
-    segmentsInBox = extractSegmentsFromBbox(locationRequest.boundingBox)
-    ecoRoute, energyOnEcoRoute = findEcoRouteAndCalEnergy(locationRequest.odPair, segmentsInBox)
+    osmGraphInBbox = extractGraphFromBbox(locationRequest.boundingBox)
+    #shortestPath = findShorestPath(osmGraphInBbox, locationRequest.odPair)
+    ecoRoute, energyOnEcoRoute = findEcoRouteAndCalEnergy(locationRequest.odPair, osmGraphInBbox)
 
 
-def extractSegmentsFromBbox(boundingBox):
-    pathOfFileFolderConsistNetwork = r'networkInBbox'
-    if os.path.exists(pathOfFileFolderConsistNetwork):
-        print("reloading network..")
-        graphOfNetworkInBox = reloadingNetworkFrom(pathOfFileFolderConsistNetwork)
+
+def extractGraphFromBbox(boundingBox):
+    folderOfGraph = r'GraphDataInBbox'
+    if os.path.exists(folderOfGraph):
+        print("reloading graph..")
+        osmGraph = reloadGraphFrom(folderOfGraph)
     else:
-        print("downloading network..")
-        graphOfNetworkInBox = downloadingNetworkTo(pathOfFileFolderConsistNetwork, boundingBox)
+        print("downloading graph..")
+        osmGraph = downloadAndSaveGraphTo(folderOfGraph, boundingBox)
+    #fig, ax = ox.plot_graph(osmGraph)
+    return osmGraph
 
 
-
-def reloadingNetworkFrom(pathOfFileFolderConsistNetwork):
-    network_gdf = gpd.read_file(pathOfFileFolderConsistNetwork + '/edges.shp')
-    nodes_gdf = gpd.read_file(pathOfFileFolderConsistNetwork + '/nodes.shp')
-    g = ox.utils_graph.graph_from_gdfs(nodes_gdf, network_gdf)
-    ox.plot_graph(g)
-    return Graph(network_gdf, nodes_gdf, g)
+def reloadGraphFrom(folderOfGraph):
+    return ox.load_graphml(os.path.join(folderOfGraph, 'osmGraph.graphml'))
 
 
-def downloadingNetworkTo(pathOfFileFolderConsistNetwork, boundingBox):
-    g = ox.graph_from_polygon(boundingBox.polygon(), network_type='drive')
-    edges, nodes = save_graph_shapefile_directional(g, filepath=pathOfFileFolderConsistNetwork)
-    return Graph(edges, nodes, g)
+def downloadAndSaveGraphTo(folderOfGraph, boundingBox):
+    os.makedirs(folderOfGraph)
+    osmGraph = ox.graph_from_polygon(boundingBox.polygon(), network_type='drive')
+    ox.save_graphml(osmGraph, filepath=os.path.join(folderOfGraph, 'osmGraph.graphml'))
+    return osmGraph
 
 
-def save_graph_shapefile_directional(G, filepath=None, encoding="utf-8"):
-    # default filepath if none was provided
-    if filepath is None:
-        filepath = os.path.join(ox.settings.data_folder, "graph_shapefile")
+def findShorestPath(osmGraph, odPair):
+    orig_yx = (odPair.origin.y, odPair.origin.x)
+    target_yx = (odPair.destination.y, odPair.destination.x)
+    nodes, edges = ox.graph_to_gdfs(osmGraph, nodes=True, edges=True)
+    edges['uvPair'] = edges.apply(lambda x: (x.u, x.v), axis=1)
+    segmentElevationChange = np.load('segmentElevationChange.npy', allow_pickle=True).item()
+    edges['isInMurphy'] = edges.uvPair.apply(lambda x: x in segmentElevationChange)
+    edgesInMurphy = edges[edges.isInMurphy]
+    graphInMurphy = ox.utils_graph.graph_from_gdfs(nodes, edgesInMurphy)
+    graphInMurphy.remove_nodes_from(list(nx.isolates(graphInMurphy)))
+    orig_node = ox.get_nearest_node(graphInMurphy, orig_yx, method='euclidean')
+    target_node = ox.get_nearest_node(graphInMurphy, target_yx, method='euclidean')
+    shortestPath = nx.shortest_path(G=graphInMurphy, source=orig_node, target=target_node, weight='length')
+    fig, ax = ox.plot_graph_route(graphInMurphy, shortestPath)
+    return shortestPath
 
-    # if save folder does not already exist, create it (shapefiles
-    # get saved as set of files)
-    if not filepath == "" and not os.path.exists(filepath):
-        os.makedirs(filepath)
-    filepath_nodes = os.path.join(filepath, "nodes.shp")
-    filepath_edges = os.path.join(filepath, "edges.shp")
 
-    # convert undirected graph to gdfs and stringify non-numeric columns
-    gdf_nodes, gdf_edges = ox.utils_graph.graph_to_gdfs(G)
-    gdf_nodes = ox.io._stringify_nonnumeric_cols(gdf_nodes)
-    gdf_edges = ox.io._stringify_nonnumeric_cols(gdf_edges)
-    # We need an unique ID for each edge
-    gdf_edges["fid"] = gdf_edges.index
-    # save the nodes and edges as separate ESRI shapefiles
-    gdf_nodes.to_file(filepath_nodes, encoding=encoding)
-    gdf_edges.to_file(filepath_edges, encoding=encoding)
+def findEcoRouteAndCalEnergy(odPair, osmGraphInBbox):
+    graph = graphPreprocess(osmGraphInBbox)
+    ecoRoute, energyConsumption = dijkstra(odPair, graph)
 
-    return gdf_edges, gdf_nodes
+def graphPreprocess(osmGraphInBbox):
+    pass
 
-def findEcoRouteAndCalEnergy(odPair, segmentsInBox):
+
+def dijkstra(odPair, graph):
     pass
 
 

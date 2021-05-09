@@ -8,7 +8,7 @@ import numpy as np
 class ObdData(Dataset):
 
     def __init__(self, root="data_normalized", mode="train", percentage=20, window_size=5, path_length=10\
-                 , label_dimension=1, pace=5):
+                 , label_dimension=1, pace=5, withoutElevation = False):
         """
 
         :param root: root of the data(normalized)
@@ -28,6 +28,11 @@ class ObdData(Dataset):
         self.label_dimension = label_dimension
         self.pace = pace
         self.len_of_index = 0
+        self.withoutElevation = withoutElevation
+        if self.withoutElevation == True:
+            self.numerical_dimension = 5
+        else:
+            self.numerical_dimension = 6
         #self.data_list_w, self.label_list_w = self.load_csv(self.mode + "_data.csv")
         self.data = self.load_csv(self.mode + "_data.csv")
         #print(self.root)
@@ -41,40 +46,6 @@ class ObdData(Dataset):
         #print(self.data_x[0,...].shape)
         self.data_y = torch.Tensor([x[1] for x in self.data]).to(device)
         self.data_c = torch.LongTensor([x[5:12] for x in self.data]).to(device)
-
-
-    def load_csv_back_up(self, filename):
-        """
-        :param filename: -> str: filename to be read
-        :return: data_list -> list(list(float)) -> list of data in the window
-                label_list -> list(list(float)) -> list of labels in the window
-        """
-        if not os.path.exists(os.path.join(self.root, filename)):
-            print("Warning: Wrong File Directory")
-        else:
-            data_csv = pd.read_csv(os.path.join(self.root, filename), header=None, names=['data','label','network_id','segment_count_in_trip'\
-                ,"position_in_trip","road_type","time_stage", "week_day", "lanes", "bridge", "endpoint_u", "endpoint_v","trip_id"])
-            # length -> the number of segments in the trip
-            # 6 numerical attributes
-            data_csv["data"] = data_csv.data.apply(lambda x: [list(map(float, x[1:-1].split(", ")))])
-            # 7 categorical attributes
-            data_csv["road_type"] = data_csv.road_type.apply(lambda x: [x])
-            data_csv["time_stage"] = data_csv.time_stage.apply(lambda x: [x])
-            data_csv["week_day"] = data_csv.week_day.apply(lambda x: [x])
-            data_csv["lanes"] = data_csv.lanes.apply(lambda x: [x])
-            data_csv["bridge"] = data_csv.bridge.apply(lambda x: [x])
-            data_csv["endpoint_u"] = data_csv.endpoint_u.apply(lambda x: [x])
-            data_csv["endpoint_v"] = data_csv.endpoint_v.apply(lambda x: [x])
-            # label
-            if self.label_dimension == 2:
-                data_csv["label"] = data_csv.label.apply(lambda x: [list(map(float, x[1:-1].split(", ")))])
-            else:
-                data_csv["label"] = data_csv.label.apply(lambda x: [list(map(float, x[1:-1].split(", ")))[0]])
-            # other attributes
-            print(type(data_csv.loc[0,"network_id"]))
-            trip_segment_counts = data_csv["trip_id"].value_counts()
-            self.len_of_index = sum(trip_segment_counts.apply(lambda x: (x-self.path_length)//self.pace+1 if x >= self.path_length else 0))
-            print(self.len_of_index)
 
 
 
@@ -104,7 +75,10 @@ class ObdData(Dataset):
 
                         # length -> the number of segments in the trip
                         # 6 numerical attributes
-                        data_row[0] = list(map(float, data_row[0][1:-1].split(", ")))
+                        if self.withoutElevation == True:
+                            data_row[0] = list(map(float, data_row[0][1:-1].split(", ")))[:2]+list(map(float, data_row[0][1:-1].split(", ")))[3:]
+                        else:
+                            data_row[0] = list(map(float, data_row[0][1:-1].split(", ")))
                         # label
                         if self.label_dimension == 2:
                             data_row[1] = list(map(float, data_row[1][1:-1].split(", ")))
@@ -127,9 +101,9 @@ class ObdData(Dataset):
                 left_idx = i - self.windowsz // 2  # [left_idx, right_idx) in the data_list
                 right_idx = i + self.windowsz // 2 + 1
                 if self.label_dimension ==1:
-                    data_zero_line = [[0]*6]+[0]*12
+                    data_zero_line = [[0]*self.numerical_dimension]+[0]*12
                 else:
-                    data_zero_line = [[0] * 6] + [[0,0]] + [0] * 11
+                    data_zero_line = [[0] * self.numerical_dimension] + [[0,0]] + [0] * 11
                 if left > 0 and right <= length:
                     #print(left,right,left_idx,right_idx)
                     data_sub = data_list[left_idx:right_idx]
@@ -173,7 +147,7 @@ class ObdData(Dataset):
 
 def main():
     # test dataloader
-    db = ObdData("DataDifferentiated", "test_notInTrain", percentage=20, label_dimension= 1)
+    db = ObdData("normalized data", "test", percentage=20, label_dimension= 1,withoutElevation=True)
     x,y,c = next(iter(db))
     print("data:", x, y, c)
 

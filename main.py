@@ -79,11 +79,11 @@ output_root = "prediction_result.csv"
 
 # load data
 train_db = ObdData(root=data_root,mode = "train",percentage=20, window_size=window_sz,\
-                   path_length=train_path_length, label_dimension=output_dimension, pace=pace_train)
+                   path_length=train_path_length, label_dimension=output_dimension, pace=pace_train,withoutElevation=False)
 val_db = ObdData(root=data_root,mode="val",percentage=20,window_size=window_sz,\
-                 path_length=test_path_length, label_dimension=output_dimension, pace=pace_test)
+                 path_length=test_path_length, label_dimension=output_dimension, pace=pace_test,withoutElevation=False)
 test_db = ObdData(root=data_root,mode="test",percentage=20,window_size=window_sz,\
-                  path_length=test_path_length, label_dimension=output_dimension, pace=pace_test)
+                  path_length=test_path_length, label_dimension=output_dimension, pace=pace_test,withoutElevation=False)
 train_loader = DataLoader(train_db, batch_size=batchsz, num_workers=0)
 val_loader = DataLoader(val_db, batch_size=batchsz, num_workers=0)
 test_loader = DataLoader(test_db, batch_size=batchsz, num_workers=0)

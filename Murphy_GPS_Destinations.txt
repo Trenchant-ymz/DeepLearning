@@ -1,0 +1,109 @@
+Murphy Depot:
+	Lat Min: 44.979
+	Lat Max: 44.985
+	Lon Min: -93.2219
+	Lat Max: -93.2182
+
+Arden Hills:
+	Lat Min: 45.0518
+	Lat Max: 45.0541
+	Lon Min: -93.1511
+	Lon Max: -93.1475
+
+Robinsdale Northeast:
+	Lat Min: 45.0536
+	Lat Max: 45.0588
+	Lon Min: -93.2708
+	Lon Max: -93.2677
+
+Robinsdale Northwest:
+	Lat Min: 45.0491
+	Lat Max: 45.0515
+	Lon Min: -93.3904
+	Lon Max: -93.3829
+
+Robinsdale South:
+	Lat Min: 44.9850
+	Lat Max: 44.9895
+	Lon Min: -93.3604
+	Lon Max: -93.3549
+
+Corcoran Southeast:
+	Lat Min: 45.0693
+	Lat Max: 45.0715
+	Lon Min: -93.4515
+	Lon Max: -93.4477
+
+Rogers:
+	Lat Min: 45.1902
+	Lat Max: 45.1918
+	Lon Min: -93.5322
+	Lon Max: -93.5292
+
+Medina East:
+	Lat Min: 
+	Lat Max: 
+	Lon Min: 
+	Lon Max: 
+
+Eau Claire West:
+	Lat Min: 44.8937
+	Lat Max: 44.9011
+	Lon Min: -91.8740
+	Lon Max: -91.8584
+
+Eau Claire Northwest:
+	Lat Min: 44.8378
+	Lat Max: 44.8500
+	Lon Min: -91.5480
+	Lon Max: -91.5440
+
+Mendota Heights South:
+	Lat Min: 44.8333
+	Lat Max: 44.8365
+	Lon Min: -93.1367
+	Lon Max: -93.1302
+
+Mendota Heights Way South:
+	Lat Min: 44.6432
+	Lat Max: 44.6444
+	Lon Min: -93.1399
+	Lon Max: -93.1377
+
+Lake Elmo South:
+	Lat Min: 44.9400
+	Lat Max: 44.9472
+	Lon Min: -92.9144
+	Lon Max: -92.9015
+
+Osseo 1:
+	Lat Min: 45.1517
+	Lat Max: 45.1545
+	Lon Min: -93.3945
+	Lon Max: -93.3923
+
+Osseo 2:
+	Lat Min: 45.0898
+	Lat Max: 45.0934
+	Lon Min: -93.4058
+	Lon Max: -93.4027
+
+Shakopee East (Depot):
+	Lat Min: 44.7854
+	Lat Max: 44.7903
+	Lon Min: -93.4696
+	Lon Max: -93.4620
+
+Shakopee North:
+	Lat Min: 44.8582
+	Lat Max: 44.8600
+	Lon Min: -93.5511
+	Lon Max: -93.5487
+
+Shakopee Northeast:
+	Lat Min: 44.8620
+	Lat Max: 44.8645
+	Lon Min: -93.5140
+	Lon Max: -93.5115
+
+Up To: Truck TL5-218, Week 43, 2020, Route 4/7
