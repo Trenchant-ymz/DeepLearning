@@ -116,9 +116,10 @@ def main():
     # test nets
     net = AttentionBlk(feature_dim=6,embedding_dim=[4,2,2,2,2,4,4],num_heads=1,output_dimension=1)
     # [batch size, window length,  feature dimension]
-    tmp = torch.randn(2, 5, 6)
+    tmp = torch.randn(1, 3, 6)
     # [batch, categorical_dim, window size]
-    c = torch.randint(2, (2, 7, 5))
+    c = torch.randint(1, (1, 7, 3))
+    print(tmp.shape,c.shape)
     # [batch size, output dimension]
     out = net(tmp,c)
 

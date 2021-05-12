@@ -145,6 +145,7 @@ def eval(model, loader, output = False):
                 # [batch, categorical_dim, window size]
                 c_segment = c[:, :, i, :]
                 # [batch size, output dimension]
+                print(x_segment.shape,c_segment.shape)
                 pred = model(x_segment, c_segment)
 
                 # [batch size, output dimension]
