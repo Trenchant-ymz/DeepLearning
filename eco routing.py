@@ -28,6 +28,7 @@ import plotly
 from random import shuffle
 import math
 import copy
+from edgeGdfPreprocessing import edgePreprocessing
 
 class Point:
     def __init__(self, x, y):
@@ -61,11 +62,11 @@ class Box:
 class LocationRequest:
     def __init__(self):
         # Murphy Depot
-        #origin = Point(-93.2219, 44.979)
-        origin = Point(-93.2466, 44.8959)
+        origin = Point(-93.2219, 44.979)
+        #origin = Point(-93.2466, 44.8959)
         # Shakopee East (Depot):
-        #destination = Point(-93.4620, 44.7903)
-        destination = Point(-93.4495, 44.8611)
+        destination = Point(-93.4620, 44.7903)
+        #destination = Point(-93.4495, 44.8611)
 
         self.odPair = OdPair(origin, destination)
         self.boundingBox = Box(-93.4975, -93.1850, 44.7458, 45.0045)
@@ -94,8 +95,8 @@ class EstimationModel:
         self.model.to(self.device)
 
     def predict(self, numericalInputData, categoricalInputData):
-        numericalInputData = torch.Tensor(numericalInputData)
-        categoricalInputData = torch.LongTensor(categoricalInputData)
+        numericalInputData = torch.Tensor(numericalInputData).unsqueeze(0)
+        categoricalInputData = torch.LongTensor(categoricalInputData).transpose(0, 1).contiguous().unsqueeze(0)
         return self.model(numericalInputData.to(self.device), categoricalInputData.to(self.device)).item()
 
 
@@ -105,23 +106,60 @@ class Window:
         self.midSeg = midSeg
         self.sucSeg = sucSeg
 
-    def extractFeatures(self, edgesGdf, nodesGdf):
-        prevSegNumFeature, prevSegCatFeature = edgeFeature(self.prevSeg, edgesGdf, nodesGdf)
-        midSegNumFeature, midSegCatFeature = edgeFeature(self.midSeg, edgesGdf, nodesGdf)
-        sucSegNumFeature, sucSegCatFeature = edgeFeature(self.sucSeg, edgesGdf, nodesGdf)
-        numericalFeatures = concatFeatures(prevSegNumFeature, midSegNumFeature, sucSegNumFeature)
-        categoricalFeatures = concatFeatures(prevSegCatFeature, midSegCatFeature, sucSegCatFeature)
+    def extractFeatures(self, edgesGdf, prevEdge):
+        prevSegNumFeature, prevSegCatFeature = edgeFeature(self.prevSeg, edgesGdf, prevEdge)
+        midSegNumFeature, midSegCatFeature = edgeFeature(self.midSeg, edgesGdf, prevEdge)
+        sucSegNumFeature, sucSegCatFeature = edgeFeature(self.sucSeg, edgesGdf, prevEdge)
+        numericalFeatures = [prevSegNumFeature, midSegNumFeature, sucSegNumFeature]
+        categoricalFeatures = [prevSegCatFeature, midSegCatFeature, sucSegCatFeature]
         return numericalFeatures, categoricalFeatures
 
 
-def edgeFeature(segmentIDInGdf, edgesGdf, nodesGdf):
+def edgeFeature(segmentIDInGdf, edgesGdf, prevEdge):
+    if segmentIDInGdf == -1:
+        return [0]*6, [0]*7
     edge = edgesGdf.loc[segmentIDInGdf]
-    edge['uSignal'] = nodesGdf.loc[edge['u'], 'highway']
-    edge['vSignal'] = nodesGdf.loc[edge['v'], 'highway']
+    catFeature = edge.categoricalFeature
+    previousOrientation = calPrevOrientation(edge, prevEdge)
+    numFeature = [edge.speedLimit, edge.mass, edge.elevationChange, previousOrientation, edge.length, edge.directionAngle]
+    return numFeature, catFeature
 
 
+def calPrevOrientation(edge, prevEdge):
+    if prevEdge is None:
+        orientation = 0
+    else:
+        a = prevEdge.points[-2]
+        b = edge.points[0]
+        c = edge.points[1]
+        orientation = ori_cal(a,b,c)
+    orientation = (orientation + 1.46016587027665) / 33.3524612794841
+    return orientation
 
 
+def ori_cal(coor_a, coor_b, coor_c):
+    '''Calcuate the orientation change from vector ab to bc (0 in default, right turn > 0, left turn < 0)
+
+    10 degree is the threshold of a turn.
+
+    Args:
+        coor_a: coordinate of point a
+        coor_b: coordinate of point b
+        coor_c: coordinate of point c
+
+    Returns:
+        's': straight
+        'l': left-hand turn
+        'r': right-hand turn
+    '''
+    a = np.array(coor_a)
+    b = np.array(coor_b)
+    c = np.array(coor_c)
+    v_ab = b - a
+    v_bc = c - b
+    cosangle = v_ab.dot(v_bc) / (np.linalg.norm(v_bc) * np.linalg.norm(v_ab) + 1e-16)
+    res =  math.acos(cosangle) * 180 / np.pi if np.cross(v_ab, v_bc) < 0 else -math.acos(cosangle) * 180 / np.pi
+    return res if not math.isnan(res) else 0
 
 
 
@@ -129,20 +167,32 @@ def edgeFeature(segmentIDInGdf, edgesGdf, nodesGdf):
 class NodeInPathGraph:
     def __init__(self, window, node):
         self.window = window
-        self.node =  node
+        self.node = node
 
-    def calVal(self, estimationModel, edgesGdf, nodesGdf):
-        numericalFeatures, categoricalFeatures = self.window.extractFeatures(edgesGdf, nodesGdf)
-        return estimationModel.predict(numericalFeatures, categoricalFeatures)
+    def __eq__(self, other):
+        return self.window == other.window and self.node == other.node
 
-    def generateNextNode(self, edgesGdf):
-        edgesGdfFromNode  = edgesGdf[edgesGdf['u'] == self.node]
-        nextNodesList = []
-        for edgeIdInGdf in list(edgesGdfFromNode.index):
-            nextNodeId = edgesGdfFromNode.loc[edgeIdInGdf, 'v']
-            nextWindow = Window(self.window.midSeg, self.window.sucSeg, edgeIdInGdf)
-            nextNodesList.append(NodeInPathGraph(nextWindow,nextNodeId))
-        return nextNodesList
+    def calVal(self, estimationModel, edgesGdf, prevEdge):
+        if self.window.midSeg == -1:
+            return 0
+        else:
+            numericalFeatures, categoricalFeatures = self.window.extractFeatures(edgesGdf, prevEdge)
+            return estimationModel.predict(numericalFeatures, categoricalFeatures)
+
+    def generateNextNode(self, edgesGdf, destNode):
+        if self.node == -1 or self.node == destNode:
+            nextNodeId = -1
+            nextWindow = Window(self.window.midSeg, self.window.sucSeg, -1)
+            nextNodes = NodeInPathGraph(nextWindow, nextNodeId)
+            return [nextNodes]
+        else:
+            edgesGdfFromNode = edgesGdf[edgesGdf['u'] == self.node]
+            nextNodesList = []
+            for edgeIdInGdf in list(edgesGdfFromNode.index):
+                nextNodeId = edgesGdfFromNode.loc[edgeIdInGdf, 'v']
+                nextWindow = Window(self.window.midSeg, self.window.sucSeg, edgeIdInGdf)
+                nextNodesList.append(NodeInPathGraph(nextWindow,nextNodeId))
+            return nextNodesList
 
 
 
@@ -196,14 +246,10 @@ class OsmGraph:
         self.estimationModel = EstimationModel("time")
         fastestPath, shortestTime = self.dijkstra()
 
-    def findMinValNode(self):
-        pass
+    def findMinValNotPassedNode(self):
+        return min(self.notPassedNodeDict, key=self.notPassedNodeDict.get)
 
-    def extractEdgeFeature(self, edgesGdfFromNode):
-        pass
 
-    def calValue(self, curNode, nextNode):
-        pass
 
     def updateWith(self, curNode):
         self.passedNodes.add(curNode)
@@ -221,186 +267,46 @@ class OsmGraph:
                 self.valueOfNodes[nextNode] = self.valueOfNodes[curNode] + value
                 self.prevEdgeOfNode[nextNode] = edgeIdInGdf
 
+
     def dijkstra(self):
-        self.passedNodes = set([self.origNode])
-        self.nodesGdf = self.getNodes()
-        nodesSet = set(self.nodesGdf.index)
-        self.notPassedNodeSet = copy.deepcopy(nodesSet)
-        self.notPassedNodeSet.remove(self.origNode)
-        self.edgesGdf = self.getEdges()
+        self.passedNodesSet = set()
+        self.notPassedNodeDict = dict()
+        #self.nodesGdf = self.getNodes()
+        #nodesSet = set(self.nodesGdf.index)
+        #self.notPassedNodeSet = copy.deepcopy(nodesSet)
+        #self.notPassedNodeSet.remove(self.origNode)
+        self.edgesGdf = edgePreprocessing(self.getEdges(), self.getNodes())
+        dummyWindow = Window(-1,-1,-1)
+        dummyOriNodeInPathGraph = NodeInPathGraph(dummyWindow, self.origNode)
+        dummyDestNodeInPathGraph = NodeInPathGraph(dummyWindow, -1)
+        edgesGdfFromOrigNode = self.edgesGdf[self.edgesGdf['u'] == self.origNode]
+        for origEdgeIdInGdf in list(edgesGdfFromOrigNode.index):
+            nextNodeId = edgesGdfFromOrigNode.loc[origEdgeIdInGdf, 'v']
+            nextWindow = Window(dummyWindow.midSeg, dummyWindow.sucSeg, nextNodeId)
+            self.notPassedNodeDict[NodeInPathGraph(nextWindow, nextNodeId)] = 0
 
-        self.edgesGdf = preprocessing(self.edgesGdf, self.nodesGdf)
 
-        self.edgeFeatureDictionary = dict()
-        self.valueOfNodes = dict()
-        self.prevEdgeOfNode = dict()
-        self.prevEdgeOfNode[self.origNode] = -1
-        self.valueOfNodes[self.origNode] = 0
-        edgesGdfFromOrigNode  = self.edgesGdf[self.edgesGdf['u'] == self.origNode]
 
         if not len(edgesGdfFromOrigNode):
             print("not path from node:", self.origNode)
             return
         else:
-            while self.destNode not in self.passedNodes:
-                time = 0
-                if time == 0:
-                    curNode = self.origNode
+            while self.destNode not in self.passedNodesSet:
+                if len(self.notPassedNodeDict) == 0:
+                    print("No route")
+                    return
                 else:
-                    curNode = self.findMinValNode()
-                self.updateWith(curNode)
+                    curNodeInPathGraph = self.findMinValNotPassedNode()
+                    valOfCurNode = self.notPassedNodeDict.pop(curNodeInPathGraph)
+                    self.passedNodesSet.add(curNodeInPathGraph)
+                    nextNodeList = curNodeInPathGraph.generateNextNode(self.edgesGdf, self.destNode)
+                    for nextNode in nextNodeList:
+                        valOfNextNode = nextNode.calVal(self.estimationModel,self.edgesGdf,curNodeInPathGraph.window.prevSeg)
+                        if valOfNextNode not in self.notPassedNodeDict or valOfNextNode + valOfCurNode < self.notPassedNodeDict[nextNode]:
+                            self.notPassedNodeDict[nextNode] = valOfNextNode + valOfCurNode
+            #############
+            return self.notPassedNodeDict[self.destNode]
 
-
-
-
-                '''
-                minValueSegment = find min value in notPassedNodes
-                passedNodes.add
-                notPassedNodes.remove
-                for nextNode in notPassedNodes:
-                    if minValueSegment -> nextNode == True:
-                        for edge in edge(minValueSegment, nextNode):
-                            numericalFeatureOfEdge, categoricalFeatureOfEdge = extractFeature(edge)
-                            succeedEdges = calculateNextEdge(nextNode)
-                            for edgeSucceed in succeedEdges:
-                                windowOfNumericalFeatures, windowOfCategoricalFeatures = windowgeneration(edge, edgeBefore, edgeSucceed)
-                                predictResult = self.estimationModel.predict(windowOfNumericalFeatures, windowOfCategoricalFeatures)
-                            averagePredict = averge(predictResult)
-                            if averagePredict + valueofminValuesegment < valueNextSegment:
-                                valueNextSegment = averagePredict + valueofminValuesegment
-                '''
-
-
-def preprocessing(edgesGdf, nodesGdf):
-    # mass
-    edgesGdf['mass'] = 23000
-    edgesGdf['mass'] = (edgesGdf.mass - 23185.02515) / 8227.65140266416
-    # speed limit
-    edgesGdf['speedLimit'] = edgesGdf.apply(lambda x: calSpeedlimit(x), axis=1)
-    edgesGdf['speedLimit'] = (edgesGdf.speedLimit - 80.5318397987996) / 21.7071763681126
-
-    # elevation change
-    segmentElevationChange = np.load('segmentElevationChange.npy', allow_pickle=True).item()
-    edgesGdf['elevationChange'] = edgesGdf.apply(lambda x: segmentElevationChange[(x.u, x.v)], axis=1)
-    edgesGdf['elevationChange'] = (edgesGdf.elevationChange + 0.00450470150885644) / 8.62149031019689
-
-    # previous orientation
-    edgesGdf['points'] = edgesGdf.geometry.apply(lambda x: pointsInSegment(x))
-
-    edgesGdf['previousOrientation'] = (edgesGdf.previousOrientation + 1.46016587027665) / 33.3524612794841
-
-    # length no changes
-    edgesGdf['length'] = (edgesGdf.length + 611.410287539911) / 903.292309592642
-
-    # direction angle
-    edgesGdf['directionAngle'] = edgesGdf.points.apply(lambda x: directionAngle(x))
-    edgesGdf['directionAngle'] = (edgesGdf.directionAngle - 1.67006008669261) / 102.77763894989
-
-    # road type
-    edgesGdf['roadtype'] = edgesGdf.apply(lambda x: highway_cal(x), axis=1)
-    roadtypeDict = np.load('road_type_dictionary.npy', allow_pickle=True).item()
-    edgesGdf['roadtype'] = edgesGdf.roadtype.apply(lambda x: roadtypeDict[x] if x in roadtypeDict else 0)
-
-    # time
-    edgesGdf['timeOfTheDay'] = 9
-    edgesGdf['timeOfTheDay'] = edgesGdf.timeOfTheDay.apply(lambda x: calTimeStage(x))
-    edgesGdf['dayOfTheWeek'] = 3
-
-    # lanes
-    edgesGdf['lanes'] = edgesGdf.apply(lambda x: cal_lanes(x), axis=1)
-    edgesGdf['lanes'] = edgesGdf['lanes'].apply(lambda x: x if x <= 8 else 8)
-
-    #bridge
-    edgesGdf['bridge_d'] = edgesGdf.bridge.apply(lambda x: bridgeOrNot(x))
-
-
-    # endpoints
-    edgesGdf['uSignal'] = edgesGdf.u.apply(lambda x: nodesGdf.loc[x, 'highway']).fillna("None")
-    edgesGdf['vSignal'] = edgesGdf.v.apply(lambda x: nodesGdf.loc[x, 'highway']).fillna("None")
-    endpoints_dictionary = np.load('endpoints_dictionary.npy', allow_pickle=True).item()
-    edgesGdf['uSignalCategoried'] = edgesGdf.uSignal.apply(lambda x: endpoints_dictionary[x] if x in endpoints_dictionary else 0)
-    edgesGdf['vSignalCategoried'] = edgesGdf.vSignal.apply(lambda x: endpoints_dictionary[x] if x in endpoints_dictionary else 0)
-
-
-
-
-
-
-
-
-def bridgeOrNot(bridge):
-    if isinstance(bridge,float):
-        return 0
-    else:
-        return 1
-
-
-def directionAngle(pointsList):
-    longitude_o, latitude_o = pointsList[0]
-    longitude_d, latitude_d = pointsList[-1]
-    direction = [latitude_d - latitude_o, longitude_d - longitude_o]
-    direction_array = np.array(direction)
-    cosangle = direction_array.dot(np.array([1, 0])) / (np.linalg.norm(direction_array))
-    if np.cross(direction_array, np.array([1, 0])) < 0:
-        direction_angle = math.acos(cosangle) * 180 / np.pi
-    else:
-        direction_angle = -math.acos(cosangle) * 180 / np.pi
-    return direction_angle
-
-
-def pointsInSegment(geometry):
-    pointsStringList = list(str(geometry)[12: -1].split(", "))
-    for i,val in enumerate(pointsStringList):
-        pointsStringList[i] = tuple(map(float, val.split(" ")))
-    return pointsStringList
-
-def highway_cal(network_seg):
-    if 'highway' in network_seg and network_seg['highway']:
-        if isinstance(network_seg['highway'], str):
-            return network_seg['highway']
-        elif isinstance(network_seg['highway'], list):
-            return network_seg['highway'][0]
-    else:
-        return 'unclassified'
-
-def calSpeedlimit(array_like):
-    if isinstance(array_like['maxspeed'],float):
-        if math.isnan(array_like['maxspeed']):
-            if array_like['highway'] == "motorway":
-                return 55 * 1.609
-            elif array_like['highway'] == "motorway_link":
-                return 50 * 1.609
-            return 30 * 1.609
-        else:
-            return array_like['maxspeed'] * 1.609
-    else:
-        res = ''
-        flag = 0
-        for i in list(array_like['maxspeed']):
-            if i.isdigit():
-                flag = 1
-                res += i
-            else:
-                if flag == 1:
-                    speed = int(res) * 1.609
-                    return speed
-
-def calTimeStage(timeOfTheDay):
-    return timeOfTheDay // 4 + 1
-
-def cal_lanes(array_like):
-    if isinstance(array_like['lanes'],list):
-        for i in array_like['lanes']:
-            if i.isdecimal():
-                return int(i)
-    if pd.isna(array_like['lanes']):
-        return 0
-    if array_like['lanes'].isalpha():
-        return 0
-    if array_like['lanes'].isalnum():
-        return int(array_like['lanes']) if int(array_like['lanes']) > 0 else 0
-    else:
-        return 0
 
 class GraphFromHmlFile(OsmGraph):
     def __init__(self, hmlAddress):
@@ -420,7 +326,8 @@ class GraphFromGdfs(OsmGraph):
 def main():
     locationRequest = LocationRequest()
     osmGraphInBbox = extractGraphOf(locationRequest.boundingBox)
-    graphInMurphy = extractGraphInMurphy(osmGraphInBbox)
+    #graphInMurphy = extractGraphInMurphy(osmGraphInBbox)
+    graphInMurphy = osmGraphInBbox
     graphInMurphy.removeIsolateNodes()
     shortestPath = findShortestPath(graphInMurphy, locationRequest.odPair)
     #ecoRoute, energyOnEcoRoute = findEcoPathAndCalEnergy(graphInMurphy, locationRequest.odPair)
@@ -436,7 +343,7 @@ def extractGraphOf(boundingBox):
         print("downloading graph..")
         osmGraph = GraphFromBbox(boundingBox)
         osmGraph.saveHmlTo(folderOfGraph)
-    #fig, ax = ox.plot_graph(osmGraph)
+    fig, ax = ox.plot_graph(osmGraph.graph)
     return osmGraph
 
 
@@ -457,6 +364,7 @@ def extractEdgesInMurphy(edges):
 def findShortestPath(osmGraph, odPair):
     origNode, targetNode = osmGraph.getODNodesFromODPair(odPair)
     shortestPath = osmGraph.shortestPath(origNode,targetNode)
+    #ox.plot_graph(osmGraph)
     osmGraph.plotPath(shortestPath)
     return shortestPath
 
