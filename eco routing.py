@@ -62,11 +62,11 @@ class Box:
 class LocationRequest:
     def __init__(self):
         # Murphy Depot
-        origin = Point(-93.2219, 44.979)
-        #origin = Point(-93.2466, 44.8959)
+        #origin = Point(-93.2219, 44.979)
+        origin = Point(-93.2466, 44.8959)
         # Shakopee East (Depot):
-        destination = Point(-93.4620, 44.7903)
-        #destination = Point(-93.4495, 44.8611)
+        #destination = Point(-93.4620, 44.7903)
+        destination = Point(-93.4495, 44.8611)
 
         self.odPair = OdPair(origin, destination)
         self.boundingBox = Box(-93.4975, -93.1850, 44.7458, 45.0045)
@@ -106,32 +106,42 @@ class Window:
         self.midSeg = midSeg
         self.sucSeg = sucSeg
 
-    def extractFeatures(self, edgesGdf, prevEdge):
-        prevSegNumFeature, prevSegCatFeature = edgeFeature(self.prevSeg, edgesGdf, prevEdge)
-        midSegNumFeature, midSegCatFeature = edgeFeature(self.midSeg, edgesGdf, prevEdge)
-        sucSegNumFeature, sucSegCatFeature = edgeFeature(self.sucSeg, edgesGdf, prevEdge)
+    def __eq__(self, other):
+        return self.prevSeg == other.prevSeg and self.midSeg == other.midSeg and self.sucSeg == other.sucSeg
+
+    def __str__(self):
+        return "["+str(self.prevSeg)+"," + str(self.midSeg)+","+ str(self.sucSeg)+"]"
+
+    def getTuple(self):
+        return tuple([self.prevSeg, self.midSeg, self.sucSeg])
+
+    def extractFeatures(self, edgesGdf, prevEdgeId):
+        prevSegNumFeature, prevSegCatFeature = edgeFeature(self.prevSeg, edgesGdf, prevEdgeId)
+        midSegNumFeature, midSegCatFeature = edgeFeature(self.midSeg, edgesGdf, prevEdgeId)
+        sucSegNumFeature, sucSegCatFeature = edgeFeature(self.sucSeg, edgesGdf, prevEdgeId)
         numericalFeatures = [prevSegNumFeature, midSegNumFeature, sucSegNumFeature]
         categoricalFeatures = [prevSegCatFeature, midSegCatFeature, sucSegCatFeature]
         return numericalFeatures, categoricalFeatures
 
 
-def edgeFeature(segmentIDInGdf, edgesGdf, prevEdge):
+def edgeFeature(segmentIDInGdf, edgesGdf, prevEdgeId):
     if segmentIDInGdf == -1:
         return [0]*6, [0]*7
-    edge = edgesGdf.loc[segmentIDInGdf]
-    catFeature = edge.categoricalFeature
-    previousOrientation = calPrevOrientation(edge, prevEdge)
-    numFeature = [edge.speedLimit, edge.mass, edge.elevationChange, previousOrientation, edge.length, edge.directionAngle]
+    curEdge = edgesGdf.loc[segmentIDInGdf]
+    catFeature = curEdge.categoricalFeature
+    previousOrientation = calPrevOrientation(edgesGdf, curEdge, prevEdgeId)
+    numFeature = [curEdge.speedLimit, curEdge.mass, curEdge.elevationChange, previousOrientation, curEdge.length, curEdge.directionAngle]
     return numFeature, catFeature
 
 
-def calPrevOrientation(edge, prevEdge):
-    if prevEdge is None:
+def calPrevOrientation(edgesGdf, curEdge, prevEdgeId):
+    if prevEdgeId is None or prevEdgeId == -1:
         orientation = 0
     else:
+        prevEdge = edgesGdf.loc[prevEdgeId]
         a = prevEdge.points[-2]
-        b = edge.points[0]
-        c = edge.points[1]
+        b = curEdge.points[0]
+        c = curEdge.points[1]
         orientation = ori_cal(a,b,c)
     orientation = (orientation + 1.46016587027665) / 33.3524612794841
     return orientation
@@ -165,33 +175,42 @@ def ori_cal(coor_a, coor_b, coor_c):
 
 
 class NodeInPathGraph:
-    def __init__(self, window, node):
+    def __init__(self, window, node, prevNode):
         self.window = window
         self.node = node
+        self.prevNode = prevNode
 
     def __eq__(self, other):
         return self.window == other.window and self.node == other.node
 
-    def calVal(self, estimationModel, edgesGdf, prevEdge):
+    def __hash__(self):
+        return hash(tuple([self.window.getTuple(), self.node]))
+
+    def __str__(self):
+        return "window:"+str(self.window)+" node:"+str(self.node)
+
+    def calVal(self, estimationModel, edgesGdf):
         if self.window.midSeg == -1:
             return 0
         else:
-            numericalFeatures, categoricalFeatures = self.window.extractFeatures(edgesGdf, prevEdge)
+            numericalFeatures, categoricalFeatures = self.window.extractFeatures(edgesGdf, self.prevNode.window.prevSeg)
             return estimationModel.predict(numericalFeatures, categoricalFeatures)
 
     def generateNextNode(self, edgesGdf, destNode):
+        curNode = NodeInPathGraph(self.window,self.node,self.prevNode)
         if self.node == -1 or self.node == destNode:
             nextNodeId = -1
             nextWindow = Window(self.window.midSeg, self.window.sucSeg, -1)
-            nextNodes = NodeInPathGraph(nextWindow, nextNodeId)
+            nextNodes = NodeInPathGraph(nextWindow, nextNodeId, curNode)
             return [nextNodes]
         else:
             edgesGdfFromNode = edgesGdf[edgesGdf['u'] == self.node]
+            #print(edgesGdfFromNode)
             nextNodesList = []
             for edgeIdInGdf in list(edgesGdfFromNode.index):
                 nextNodeId = edgesGdfFromNode.loc[edgeIdInGdf, 'v']
                 nextWindow = Window(self.window.midSeg, self.window.sucSeg, edgeIdInGdf)
-                nextNodesList.append(NodeInPathGraph(nextWindow,nextNodeId))
+                nextNodesList.append(NodeInPathGraph(nextWindow,nextNodeId,curNode))
             return nextNodesList
 
 
@@ -239,12 +258,14 @@ class OsmGraph:
         self.destNode = destNode
         self.estimationModel = EstimationModel("fuel")
         ecoPath, ecoEnergy = self.dijkstra()
+        return ecoPath, ecoEnergy
 
     def fastestPath(self, origNode, destNode):
         self.origNode = origNode
         self.destNode = destNode
         self.estimationModel = EstimationModel("time")
         fastestPath, shortestTime = self.dijkstra()
+        return fastestPath, shortestTime
 
     def findMinValNotPassedNode(self):
         return min(self.notPassedNodeDict, key=self.notPassedNodeDict.get)
@@ -276,14 +297,15 @@ class OsmGraph:
         #self.notPassedNodeSet = copy.deepcopy(nodesSet)
         #self.notPassedNodeSet.remove(self.origNode)
         self.edgesGdf = edgePreprocessing(self.getEdges(), self.getNodes())
+        #print(self.edgesGdf.loc[1208])
         dummyWindow = Window(-1,-1,-1)
-        dummyOriNodeInPathGraph = NodeInPathGraph(dummyWindow, self.origNode)
-        dummyDestNodeInPathGraph = NodeInPathGraph(dummyWindow, -1)
+        dummyOriNodeInPathGraph = NodeInPathGraph(dummyWindow, self.origNode, None)
+        dummyDestNodeInPathGraph = NodeInPathGraph(dummyWindow, -1, None)
         edgesGdfFromOrigNode = self.edgesGdf[self.edgesGdf['u'] == self.origNode]
         for origEdgeIdInGdf in list(edgesGdfFromOrigNode.index):
             nextNodeId = edgesGdfFromOrigNode.loc[origEdgeIdInGdf, 'v']
-            nextWindow = Window(dummyWindow.midSeg, dummyWindow.sucSeg, nextNodeId)
-            self.notPassedNodeDict[NodeInPathGraph(nextWindow, nextNodeId)] = 0
+            nextWindow = Window(dummyWindow.midSeg, dummyWindow.sucSeg, origEdgeIdInGdf)
+            self.notPassedNodeDict[NodeInPathGraph(nextWindow, nextNodeId, dummyOriNodeInPathGraph)] = 0
 
 
 
@@ -291,21 +313,32 @@ class OsmGraph:
             print("not path from node:", self.origNode)
             return
         else:
-            while self.destNode not in self.passedNodesSet:
+            while dummyDestNodeInPathGraph not in self.passedNodesSet:
                 if len(self.notPassedNodeDict) == 0:
                     print("No route")
                     return
                 else:
                     curNodeInPathGraph = self.findMinValNotPassedNode()
+                    #print(str(curNodeInPathGraph))
                     valOfCurNode = self.notPassedNodeDict.pop(curNodeInPathGraph)
                     self.passedNodesSet.add(curNodeInPathGraph)
                     nextNodeList = curNodeInPathGraph.generateNextNode(self.edgesGdf, self.destNode)
                     for nextNode in nextNodeList:
-                        valOfNextNode = nextNode.calVal(self.estimationModel,self.edgesGdf,curNodeInPathGraph.window.prevSeg)
+                        #print(str(nextNode))
+                        valOfNextNode = nextNode.calVal(self.estimationModel,self.edgesGdf)
                         if valOfNextNode not in self.notPassedNodeDict or valOfNextNode + valOfCurNode < self.notPassedNodeDict[nextNode]:
                             self.notPassedNodeDict[nextNode] = valOfNextNode + valOfCurNode
-            #############
-            return self.notPassedNodeDict[self.destNode]
+            pathWitMinVal = []
+            for tempNode in self.passedNodesSet:
+                if tempNode == dummyDestNodeInPathGraph:
+                    print(str(tempNode),tempNode.prevNode)
+                    break
+            pathWitMinVal.append(tempNode.node)
+            while tempNode.prevNode:
+                tempNode = tempNode.prevNode
+                pathWitMinVal.append(tempNode.node)
+            minVal = self.notPassedNodeDict[dummyDestNodeInPathGraph]
+            return pathWitMinVal[:2:-1], minVal
 
 
 class GraphFromHmlFile(OsmGraph):
@@ -326,12 +359,11 @@ class GraphFromGdfs(OsmGraph):
 def main():
     locationRequest = LocationRequest()
     osmGraphInBbox = extractGraphOf(locationRequest.boundingBox)
-    #graphInMurphy = extractGraphInMurphy(osmGraphInBbox)
-    graphInMurphy = osmGraphInBbox
+    graphInMurphy = extractGraphInMurphy(osmGraphInBbox)
     graphInMurphy.removeIsolateNodes()
     shortestPath = findShortestPath(graphInMurphy, locationRequest.odPair)
-    #ecoRoute, energyOnEcoRoute = findEcoPathAndCalEnergy(graphInMurphy, locationRequest.odPair)
-    #fastestPath, shortestTime = findFastestPathAndCalTime(graphInMurphy, locationRequest.odPair)
+    ecoRoute, energyOnEcoRoute = findEcoPathAndCalEnergy(graphInMurphy, locationRequest.odPair)
+    fastestPath, shortestTime = findFastestPathAndCalTime(graphInMurphy, locationRequest.odPair)
 
 
 def extractGraphOf(boundingBox):
@@ -343,7 +375,7 @@ def extractGraphOf(boundingBox):
         print("downloading graph..")
         osmGraph = GraphFromBbox(boundingBox)
         osmGraph.saveHmlTo(folderOfGraph)
-    fig, ax = ox.plot_graph(osmGraph.graph)
+    #fig, ax = ox.plot_graph(osmGraph.graph)
     return osmGraph
 
 
@@ -364,6 +396,7 @@ def extractEdgesInMurphy(edges):
 def findShortestPath(osmGraph, odPair):
     origNode, targetNode = osmGraph.getODNodesFromODPair(odPair)
     shortestPath = osmGraph.shortestPath(origNode,targetNode)
+    print(shortestPath)
     #ox.plot_graph(osmGraph)
     osmGraph.plotPath(shortestPath)
     return shortestPath
@@ -372,6 +405,7 @@ def findShortestPath(osmGraph, odPair):
 def findEcoPathAndCalEnergy(osmGraph, odPair):
     origNode, targetNode = osmGraph.getODNodesFromODPair(odPair)
     ecoPath, ecoEnergy = osmGraph.ecoPath(origNode,targetNode)
+    print(ecoPath, ecoEnergy)
     osmGraph.plotPath(ecoPath)
     return ecoPath, ecoEnergy
 
@@ -379,6 +413,7 @@ def findEcoPathAndCalEnergy(osmGraph, odPair):
 def findFastestPathAndCalTime(osmGraph, odPair):
     origNode, targetNode = osmGraph.getODNodesFromODPair(odPair)
     fastestPath, shortestTime = osmGraph.fastestPath(origNode,targetNode)
+    print(fastestPath, shortestTime)
     osmGraph.plotPath(fastestPath)
     return fastestPath, shortestTime
 
