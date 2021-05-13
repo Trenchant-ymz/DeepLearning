@@ -27,3 +27,9 @@ Version 1.0
 Version 1.1: In [main.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/main.py): Add "map_location=device" in "model.load_state_dict()".
 
 Version 1.2: np.array(tensor.cpu())
+
+### 2021/4/30
+version 2.0: 6 categorical features are added into the model.
+
+### 2021/5/13
+version 3.0: Adding an eco-routing script "eco routing.py" which can estimating the eco route/ the shortest route/ the fastest route using the model trained by main.py
