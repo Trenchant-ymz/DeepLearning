@@ -20,7 +20,7 @@ class EstimationModel:
         self.outputOfModel = outputOfModel
         self.model = AttentionBlk(feature_dim=self.featureDim, embedding_dim=self.embeddingDim,
                                   num_heads=self.numOfHeads, output_dimension=self.outputDimension)
-        self.modelAddress = "best_13d_" + self.outputOfModel + ".mdl"
+        self.modelAddress = "pretrained model/best_13d_" + self.outputOfModel + ".mdl"
         self.model.load_state_dict(torch.load(self.modelAddress, map_location=self.device))
         self.model.to(self.device)
 

@@ -2,13 +2,23 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="66e55b93-4013-418c-b118-b87d9b6682ff" name="Default Changelist" comment="eco routing algorithm">
-      <change afterPath="$PROJECT_DIR$/estimationModel.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/osmgraph.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/pathGraph.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/spaitalShape.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/window.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Murphy_GPS_Destinations.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/best_13d_fuel.mdl" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/best_13d_time.mdl" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/eco routing.py" beforeDir="false" afterPath="$PROJECT_DIR$/eco routing.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/testFunctions.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/testFunctions.ipynb" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/edgeGdfPreprocessing.py" beforeDir="false" afterPath="$PROJECT_DIR$/edgeGdfPreprocessing.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/endpoints_dictionary.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/endpoints_dictionary.npy" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/estimationModel.py" beforeDir="false" afterPath="$PROJECT_DIR$/estimationModel.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/fuelModelWithoutElevation.mdl" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/generateHeightDict.ipynb" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/mean_std.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/road_type_dictionary.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/road_type_dictionary.npy" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/segmentElevationChange.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/segmentElevationChange.npy" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -185,8 +195,8 @@
     <recent_temporary>
       <list>
         <item itemvalue="Python.eco routing" />
-        <item itemvalue="Python.nets" />
         <item itemvalue="Python.main" />
+        <item itemvalue="Python.nets" />
         <item itemvalue="Python.obddata" />
         <item itemvalue="Python.download_data" />
       </list>
@@ -439,7 +449,14 @@
       <option name="project" value="LOCAL" />
       <updated>1620918627356</updated>
     </task>
-    <option name="localTasksCounter" value="35" />
+    <task id="LOCAL-00035" summary="eco routing algorithm">
+      <created>1620971984508</created>
+      <option name="number" value="00035" />
+      <option name="presentableId" value="LOCAL-00035" />
+      <option name="project" value="LOCAL" />
+      <updated>1620971984508</updated>
+    </task>
+    <option name="localTasksCounter" value="36" />
     <servers />
   </component>
   <component name="Vcs.Log.History.Properties">

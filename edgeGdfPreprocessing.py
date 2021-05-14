@@ -1,33 +1,6 @@
-import torch
-from torch import nn, optim
-import os
-from torch.utils.data import DataLoader
-from obddata import ObdData
-from nets import AttentionBlk
-import torch.nn.functional as F
 import numpy as np
-import csv
-import time
-import visdom
-from tqdm import tqdm
 import pandas as pd
-import matplotlib.pyplot as plt
-import osmnx as ox
-import networkx as nx
-import plotly.graph_objects as go
-import psycopg2
-import datetime
-import plotly.io as pio
-import osmnx as ox
-from shapely.geometry import Polygon
-import os
-import gc
-from os import walk
-import geopandas as gpd
-import plotly
-from random import shuffle
 import math
-import copy
 
 def edgePreprocessing(edgesGdf, nodesGdf):
     # mass
@@ -38,7 +11,7 @@ def edgePreprocessing(edgesGdf, nodesGdf):
     edgesGdf['speedLimit'] = (edgesGdf.speedLimit - 80.5318397987996) / 21.7071763681126
 
     # elevation change
-    segmentElevationChange = np.load('segmentElevationChange.npy', allow_pickle=True).item()
+    segmentElevationChange = np.load('statistical data/segmentElevationChange.npy', allow_pickle=True).item()
     edgesGdf['elevationChange'] = edgesGdf.apply(lambda x: segmentElevationChange[(x.u, x.v)], axis=1)
     edgesGdf['elevationChange'] = (edgesGdf.elevationChange + 0.00450470150885644) / 8.62149031019689
 
@@ -56,7 +29,7 @@ def edgePreprocessing(edgesGdf, nodesGdf):
 
     # road type
     edgesGdf['roadtype'] = edgesGdf.apply(lambda x: highway_cal(x), axis=1)
-    roadtypeDict = np.load('road_type_dictionary.npy', allow_pickle=True).item()
+    roadtypeDict = np.load('statistical data/road_type_dictionary.npy', allow_pickle=True).item()
     edgesGdf['roadtype'] = edgesGdf.roadtype.apply(lambda x: roadtypeDict[x] if x in roadtypeDict else 0)
 
     # time
@@ -75,7 +48,7 @@ def edgePreprocessing(edgesGdf, nodesGdf):
     # endpoints
     edgesGdf['oriSignal'] = edgesGdf.u.apply(lambda x: nodesGdf.loc[x, 'highway']).fillna("None")
     edgesGdf['destSignal'] = edgesGdf.v.apply(lambda x: nodesGdf.loc[x, 'highway']).fillna("None")
-    endpoints_dictionary = np.load('endpoints_dictionary.npy', allow_pickle=True).item()
+    endpoints_dictionary = np.load('statistical data/endpoints_dictionary.npy', allow_pickle=True).item()
     edgesGdf['oriSignalCategoried'] = edgesGdf.oriSignal.apply(lambda x: endpoints_dictionary[x] if x in endpoints_dictionary else 0)
     edgesGdf['destSignalCategoried'] = edgesGdf.destSignal.apply(lambda x: endpoints_dictionary[x] if x in endpoints_dictionary else 0)
 
@@ -124,6 +97,7 @@ def highway_cal(network_seg):
     else:
         return 'unclassified'
 
+
 def calSpeedlimit(array_like):
     if isinstance(array_like['maxspeed'],float):
         if math.isnan(array_like['maxspeed']):
@@ -146,8 +120,10 @@ def calSpeedlimit(array_like):
                     speed = int(res) * 1.609
                     return speed
 
+
 def calTimeStage(timeOfTheDay):
     return timeOfTheDay // 4 + 1
+
 
 def cal_lanes(array_like):
     if isinstance(array_like['lanes'],list):

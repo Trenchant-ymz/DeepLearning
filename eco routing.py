@@ -49,7 +49,7 @@ def extractGraphInMurphy(osmGraph):
 
 def extractEdgesInMurphy(edges):
     edges['uvPair'] = edges.apply(lambda x: (x.u, x.v), axis=1)
-    segmentElevationChange = np.load('segmentElevationChange.npy', allow_pickle=True).item()
+    segmentElevationChange = np.load('statistical data/segmentElevationChange.npy', allow_pickle=True).item()
     edges['isInMurphy'] = edges.uvPair.apply(lambda x: x in segmentElevationChange)
     return edges[edges.isInMurphy]
 

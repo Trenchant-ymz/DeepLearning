@@ -71,7 +71,7 @@ else:
 # root for the estimation output file
 # output_root = "/content/drive/MyDrive/Colab_Notebooks/DeepLearning/prediction_result.csv"
 # local
-ckpt_path = "best_13d_fuel.mdl"
+ckpt_path = "pretrained model/best_13d_fuel.mdl"
 #ckpt_path = "best_13d_time.mdl"
 data_root = "normalized data"
 #data_root = "DataDifferentiated"
@@ -145,7 +145,7 @@ def eval(model, loader, output = False):
                 # [batch, categorical_dim, window size]
                 c_segment = c[:, :, i, :]
                 # [batch size, output dimension]
-                print(x_segment.shape,c_segment.shape)
+                #print(x_segment.shape,c_segment.shape)
                 pred = model(x_segment, c_segment)
 
                 # [batch size, output dimension]
