@@ -2,7 +2,9 @@
 
 ## Environments:
 
-The code works well with Python 3.7, Pytorch 1.8.1, and **osmnx 0.16.1**.
+The code works well with [python](https://www.python.org/) 3.7, 
+[pytorch](https://pytorch.org/) 1.8.1, 
+and **[osmnx](https://github.com/gboeing/osmnx)  0.16.1**.
 
 ## File Folders:
 
