@@ -1,24 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
   <component name="ChangeListManager">
     <list default="true" id="66e55b93-4013-418c-b118-b87d9b6682ff" name="Default Changelist" comment="eco routing algorithm">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Murphy_GPS_Destinations.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/best_13d_fuel.mdl" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/best_13d_time.mdl" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/eco routing.py" beforeDir="false" afterPath="$PROJECT_DIR$/eco routing.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/edgeGdfPreprocessing.py" beforeDir="false" afterPath="$PROJECT_DIR$/edgeGdfPreprocessing.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/endpoints_dictionary.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/endpoints_dictionary.npy" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/estimationModel.py" beforeDir="false" afterPath="$PROJECT_DIR$/estimationModel.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/fuelModelWithoutElevation.mdl" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/generateHeightDict.ipynb" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/mean_std.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/road_type_dictionary.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/road_type_dictionary.npy" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/segmentElevationChange.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/segmentElevationChange.npy" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/nets.py" beforeDir="false" afterPath="$PROJECT_DIR$/nets.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/normalized data/data_description.md" beforeDir="false" afterPath="$PROJECT_DIR$/normalized data/data_description.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/obddata.py" beforeDir="false" afterPath="$PROJECT_DIR$/obddata.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pretrained model/best_13d_fuel.mdl" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/pretrained model/best_13d_time.mdl" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/readme.md" beforeDir="false" afterPath="$PROJECT_DIR$/readme.md" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -65,7 +58,7 @@
     <property name="run.code.analysis.last.selected.profile" value="aDefault" />
     <property name="settings.editor.selected.configurable" value="preferences.pluginManager" />
   </component>
-  <component name="RunManager" selected="Python.eco routing">
+  <component name="RunManager" selected="Python.obddata">
     <configuration name="download_data" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="DeepLearning" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -194,10 +187,10 @@
     </configuration>
     <recent_temporary>
       <list>
+        <item itemvalue="Python.obddata" />
         <item itemvalue="Python.eco routing" />
         <item itemvalue="Python.main" />
         <item itemvalue="Python.nets" />
-        <item itemvalue="Python.obddata" />
         <item itemvalue="Python.download_data" />
       </list>
     </recent_temporary>
@@ -456,7 +449,14 @@
       <option name="project" value="LOCAL" />
       <updated>1620971984508</updated>
     </task>
-    <option name="localTasksCounter" value="36" />
+    <task id="LOCAL-00036" summary="eco routing algorithm">
+      <created>1620972852182</created>
+      <option name="number" value="00036" />
+      <option name="presentableId" value="LOCAL-00036" />
+      <option name="project" value="LOCAL" />
+      <updated>1620972852182</updated>
+    </task>
+    <option name="localTasksCounter" value="37" />
     <servers />
   </component>
   <component name="Vcs.Log.History.Properties">

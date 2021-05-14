@@ -112,7 +112,7 @@ class AttentionBlk(nn.Module):
         x_output = self.norm(x_output.squeeze(0) + x_output_ff)
         return F.relu(self.linear(x_output))
 
-def main():
+def testNet():
     # test nets
     net = AttentionBlk(feature_dim=6,embedding_dim=[4,2,2,2,2,4,4],num_heads=1,output_dimension=1)
     # [batch size, window length,  feature dimension]
@@ -129,4 +129,4 @@ def main():
     print("fc out:", out.shape)
 
 if __name__ == "__main__":
-    main()
+    testNet()

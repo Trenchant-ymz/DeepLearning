@@ -145,7 +145,7 @@ class ObdData(Dataset):
 
 
 
-def main():
+def testDataloader():
     # test dataloader
     db = ObdData("normalized data", "test", percentage=20, label_dimension= 1,withoutElevation=True)
     x,y,c = next(iter(db))
@@ -199,4 +199,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    testDataloader()
