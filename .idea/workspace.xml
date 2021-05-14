@@ -4,13 +4,8 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="66e55b93-4013-418c-b118-b87d9b6682ff" name="Default Changelist" comment="eco routing algorithm">
+    <list default="true" id="66e55b93-4013-418c-b118-b87d9b6682ff" name="Default Changelist" comment="Version 3.0">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nets.py" beforeDir="false" afterPath="$PROJECT_DIR$/nets.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/normalized data/data_description.md" beforeDir="false" afterPath="$PROJECT_DIR$/normalized data/data_description.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/obddata.py" beforeDir="false" afterPath="$PROJECT_DIR$/obddata.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pretrained model/best_13d_fuel.mdl" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/pretrained model/best_13d_time.mdl" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/readme.md" beforeDir="false" afterPath="$PROJECT_DIR$/readme.md" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -45,12 +40,15 @@
     <option name="defaultAccountId" value="35f47e87-0593-42e0-ac5c-d2c96b0bf6de" />
   </component>
   <component name="ProjectId" id="1qLLJNY70qXWz3DUiTOVW9vRBI4" />
-  <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
+  <component name="ProjectLevelVcsManager" settingsEditedManually="true">
+    <ConfirmationsSetting value="2" id="Add" />
+  </component>
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
   <component name="PropertiesComponent">
+    <property name="ASKED_ADD_EXTERNAL_FILES" value="true" />
     <property name="ChangesTree.GroupingKeys" value="" />
     <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
     <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
@@ -456,7 +454,14 @@
       <option name="project" value="LOCAL" />
       <updated>1620972852182</updated>
     </task>
-    <option name="localTasksCounter" value="37" />
+    <task id="LOCAL-00037" summary="Version 3.0">
+      <created>1620976512702</created>
+      <option name="number" value="00037" />
+      <option name="presentableId" value="LOCAL-00037" />
+      <option name="project" value="LOCAL" />
+      <updated>1620976512702</updated>
+    </task>
+    <option name="localTasksCounter" value="38" />
     <servers />
   </component>
   <component name="Vcs.Log.History.Properties">
@@ -482,6 +487,7 @@
     <option name="oldMeFiltersMigrated" value="true" />
   </component>
   <component name="VcsManagerConfiguration">
+    <option name="ADD_EXTERNAL_FILES_SILENTLY" value="true" />
     <MESSAGE value="3-30" />
     <MESSAGE value="test git" />
     <MESSAGE value="zlfxsd" />
@@ -495,6 +501,7 @@
     <MESSAGE value="Version 1.2" />
     <MESSAGE value="workable version with 12 features" />
     <MESSAGE value="eco routing algorithm" />
-    <option name="LAST_COMMIT_MESSAGE" value="eco routing algorithm" />
+    <MESSAGE value="Version 3.0" />
+    <option name="LAST_COMMIT_MESSAGE" value="Version 3.0" />
   </component>
 </project>
