@@ -33,11 +33,11 @@ contains the statistical data of our data used in the pre-training stage, includ
    folder [pretrained model](https://github.com/Trenchant-ymz/DeepLearning/tree/master/pretrained%20model);
    use mode="test" to test the performance of the model;
    use mode="test" and output = True to test the model and save the ground truth / estimated value into 
-   [prediction_result.csv](https://github.com/Trenchant-ymz/DeepLearning/blob/master/prediction_result.csv)
+   [prediction_result.csv](https://github.com/Trenchant-ymz/DeepLearning/blob/master/prediction_result.csv).
 3. [nets.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/nets.py) defines the deep learning estimation model.
 4. [obddata.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/obddata.py) defines the dataloader.
 5. [estimationModel.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/estimationModel.py)
-   loads the pretrained model from folder [pretrained models](https://github.com/Trenchant-ymz/DeepLearning/tree/master/pretrained%20models) 
+   loads the pretrained model from folder [pretrained models](https://github.com/Trenchant-ymz/DeepLearning/tree/master/pretrained%20models). 
 6. [edgeGdfPreprocessing.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/edgeGdfPreprocessing.py)
    extracts features of segments of the edge.gdf from the openstreetmap.
    
@@ -45,7 +45,7 @@ contains the statistical data of our data used in the pre-training stage, includ
    [osmgraph.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/osmgraph.py),
    [spaitalShape.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/spaitalShape.py) and
    [window.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/window.py)
-   are classes used for finding the shortest/ eco/ fastest route.
+   are classes used in [eco routing.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/eco%20routing.py).
 
 
 
