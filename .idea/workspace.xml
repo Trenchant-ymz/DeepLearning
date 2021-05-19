@@ -4,26 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="66e55b93-4013-418c-b118-b87d9b6682ff" name="Default Changelist" comment="Version 3.0">
-      <change afterPath="$PROJECT_DIR$/Get elevations from ArcGIS summarize elevation.ipynb" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/TL5-218_2020W33_gps.csv" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/eco route.pdf" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/fastest route.pdf" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/nodes.csv" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/nodesWithElevation.csv" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/routing result.pdf" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/shortest route.pdf" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/shortest route.png" afterDir="false" />
+    <list default="true" id="66e55b93-4013-418c-b118-b87d9b6682ff" name="Default Changelist" comment="Version 4.0">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/eco routing.py" beforeDir="false" afterPath="$PROJECT_DIR$/eco routing.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/edgeGdfPreprocessing.py" beforeDir="false" afterPath="$PROJECT_DIR$/edgeGdfPreprocessing.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/estimationModel.py" beforeDir="false" afterPath="$PROJECT_DIR$/estimationModel.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nets.py" beforeDir="false" afterPath="$PROJECT_DIR$/nets.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/osmgraph.py" beforeDir="false" afterPath="$PROJECT_DIR$/osmgraph.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pathGraph.py" beforeDir="false" afterPath="$PROJECT_DIR$/pathGraph.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/readme.md" beforeDir="false" afterPath="$PROJECT_DIR$/readme.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/testFunctions.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/testFunctions.ipynb" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/window.py" beforeDir="false" afterPath="$PROJECT_DIR$/window.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/routing result.pdf" beforeDir="false" afterPath="$PROJECT_DIR$/routing result.pdf" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -499,7 +482,21 @@
       <option name="project" value="LOCAL" />
       <updated>1620977106401</updated>
     </task>
-    <option name="localTasksCounter" value="41" />
+    <task id="LOCAL-00041" summary="Version 4.0">
+      <created>1621389524638</created>
+      <option name="number" value="00041" />
+      <option name="presentableId" value="LOCAL-00041" />
+      <option name="project" value="LOCAL" />
+      <updated>1621389524638</updated>
+    </task>
+    <task id="LOCAL-00042" summary="Version 4.0">
+      <created>1621389630086</created>
+      <option name="number" value="00042" />
+      <option name="presentableId" value="LOCAL-00042" />
+      <option name="project" value="LOCAL" />
+      <updated>1621389630086</updated>
+    </task>
+    <option name="localTasksCounter" value="43" />
     <servers />
   </component>
   <component name="Vcs.Log.History.Properties">
@@ -540,6 +537,7 @@
     <MESSAGE value="workable version with 12 features" />
     <MESSAGE value="eco routing algorithm" />
     <MESSAGE value="Version 3.0" />
-    <option name="LAST_COMMIT_MESSAGE" value="Version 3.0" />
+    <MESSAGE value="Version 4.0" />
+    <option name="LAST_COMMIT_MESSAGE" value="Version 4.0" />
   </component>
 </project>
