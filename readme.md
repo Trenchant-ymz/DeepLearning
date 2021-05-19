@@ -68,5 +68,5 @@ version 2.0: 6 categorical features are added into the model.
 version 3.0: Add an eco-routing script "eco routing.py" which can 
 estimating the eco route/ the shortest route/ the fastest route using the model trained by main.py
 
-### Coming Soon
-version 3.5: Add a functions which can calculate length/ energy/ time for a given path.
+### 2021/5/19
+version 4.0: Extract elevation data using ESRI Summarize Elevation API; Add functions which calculate length/ energy/ time for each path.
