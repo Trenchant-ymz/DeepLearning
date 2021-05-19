@@ -20,11 +20,13 @@ class EstimationModel:
         self.outputOfModel = outputOfModel
         self.model = AttentionBlk(feature_dim=self.featureDim, embedding_dim=self.embeddingDim,
                                   num_heads=self.numOfHeads, output_dimension=self.outputDimension)
-        self.modelAddress = "pretrained model/best_13d_" + self.outputOfModel + ".mdl"
+        self.modelAddress = "pretrained models/best_13d_" + self.outputOfModel + ".mdl"
         self.model.load_state_dict(torch.load(self.modelAddress, map_location=self.device))
         self.model.to(self.device)
 
     def predict(self, numericalInputData, categoricalInputData):
         numericalInputData = torch.Tensor(numericalInputData).unsqueeze(0)
         categoricalInputData = torch.LongTensor(categoricalInputData).transpose(0, 1).contiguous().unsqueeze(0)
+        #print("numericalInputData", numericalInputData)
+        #print("categoricalInputData", categoricalInputData)
         return self.model(numericalInputData.to(self.device), categoricalInputData.to(self.device)).item()

@@ -2,16 +2,17 @@ from window import Window
 
 
 class NodeInPathGraph:
-    def __init__(self, window, node, prevNode):
+    def __init__(self, window, node, prevNode, edge):
         self.window = window
         self.node = node
         self.prevNode = prevNode
+        self.edge = edge
 
     def __eq__(self, other):
-        return self.window == other.window
+        return self.window == other.window and self.edge == other.edge
 
     def __hash__(self):
-        return hash(self.window.getTuple())
+        return hash((self.window.getTuple(), self.edge))
 
     def __str__(self):
         return "window:"+str(self.window)+" node:"+str(self.node)
@@ -24,7 +25,7 @@ class NodeInPathGraph:
             return estimationModel.predict(numericalFeatures, categoricalFeatures)
 
     def generateNextNode(self, edgesGdf, destNode):
-        self.curNode = NodeInPathGraph(self.window,self.node,self.prevNode)
+        self.curNode = NodeInPathGraph(self.window,self.node,self.prevNode,self.edge)
         self.destNode = destNode
         if self.__isNoSucNode():
             return self.__dummySucNode()
@@ -37,7 +38,7 @@ class NodeInPathGraph:
     def __dummySucNode(self):
         nextNodeId = -1
         nextWindow = Window(self.window.midSeg, self.window.sucSeg, -1)
-        nextNodes = NodeInPathGraph(nextWindow, nextNodeId, self.curNode)
+        nextNodes = NodeInPathGraph(nextWindow, nextNodeId, self.curNode, -1)
         return [nextNodes]
 
     def __nextNodeFromEdge(self, edgesGdf):
@@ -46,5 +47,5 @@ class NodeInPathGraph:
         for edgeIdInGdf in list(edgesGdfFromNode.index):
             nextNodeId = edgesGdfFromNode.loc[edgeIdInGdf, 'v']
             nextWindow = Window(self.window.midSeg, self.window.sucSeg, edgeIdInGdf)
-            nextNodesList.append(NodeInPathGraph(nextWindow, nextNodeId, self.curNode))
+            nextNodesList.append(NodeInPathGraph(nextWindow, nextNodeId, self.curNode, edgeIdInGdf))
         return nextNodesList

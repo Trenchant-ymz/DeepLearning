@@ -19,8 +19,8 @@ class Window:
 
     def extractFeatures(self, edgesGdf, prevEdgeId):
         prevSegNumFeature, prevSegCatFeature = edgeFeature(self.prevSeg, edgesGdf, prevEdgeId)
-        midSegNumFeature, midSegCatFeature = edgeFeature(self.midSeg, edgesGdf, prevEdgeId)
-        sucSegNumFeature, sucSegCatFeature = edgeFeature(self.sucSeg, edgesGdf, prevEdgeId)
+        midSegNumFeature, midSegCatFeature = edgeFeature(self.midSeg, edgesGdf, self.prevSeg)
+        sucSegNumFeature, sucSegCatFeature = edgeFeature(self.sucSeg, edgesGdf, self.midSeg)
         numericalFeatures = [prevSegNumFeature, midSegNumFeature, sucSegNumFeature]
         categoricalFeatures = [prevSegCatFeature, midSegCatFeature, sucSegCatFeature]
         return numericalFeatures, categoricalFeatures
@@ -33,7 +33,7 @@ def edgeFeature(segmentIDInGdf, edgesGdf, prevEdgeId):
     catFeature = curEdge.categoricalFeature
     previousOrientation = calPrevOrientation(edgesGdf, curEdge, prevEdgeId)
     numFeature = [curEdge.speedLimit, curEdge.mass, curEdge.elevationChange, previousOrientation,
-                  curEdge.length, curEdge.directionAngle]
+                  curEdge.lengthNormalized, curEdge.directionAngle]
     return numFeature, catFeature
 
 
