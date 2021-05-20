@@ -4,6 +4,7 @@ import pandas as pd
 from osmgraph import GraphFromBbox, GraphFromHmlFile, GraphFromGdfs
 from spaitalShape import Point, OdPair, Box
 from edgeGdfPreprocessing import edgePreprocessing
+import osmnx as ox
 
 class LocationRequest:
     def __init__(self):
@@ -22,20 +23,21 @@ class LocationRequest:
 
 def main():
     locationRequest = LocationRequest()
+    graphWithElevation, edges = extractGraphAndPreprocessing()
+    shortestNodePath = findShortestPath(graphWithElevation, locationRequest.odPair)
+    ecoRoute, energyOnEcoRoute, ecoEdgePath = findEcoPathAndCalEnergy(graphWithElevation, locationRequest.odPair)
+    fastestPath, shortestTime, fastestEdgePath = findFastestPathAndCalTime(graphWithElevation, locationRequest.odPair)
+    graphWithElevation.plotPathList([shortestNodePath, ecoRoute, fastestPath], 'routing result.pdf')
+
+
+def extractGraphAndPreprocessing(locationRequest):
     osmGraphInBbox = extractGraphOf(locationRequest.boundingBox)
     nodes, edges = osmGraphInBbox.graphToGdfs()
     extractElevation(nodes, edges)
     edges = edgePreprocessing(nodes, edges)
     graphWithElevation = GraphFromGdfs(nodes, edges)
     graphWithElevation.removeIsolateNodes()
-    shortestNodePath = findShortestPath(graphWithElevation, locationRequest.odPair)
-    shortestPath = nodePathTOEdgePath(shortestNodePath, edges)
-    calAndPrintPathAttributes(graphWithElevation, shortestPath, "shortestPath")
-    ecoRoute, energyOnEcoRoute, ecoEdgePath = findEcoPathAndCalEnergy(graphWithElevation, locationRequest.odPair)
-    calAndPrintPathAttributes(graphWithElevation, ecoEdgePath, "ecoRoute")
-    fastestPath, shortestTime, fastestEdgePath = findFastestPathAndCalTime(graphWithElevation, locationRequest.odPair)
-    calAndPrintPathAttributes(graphWithElevation, fastestEdgePath, "fastestPath")
-    graphWithElevation.plotPathList([shortestNodePath, ecoRoute, fastestPath],'routing result.pdf')
+    return graphWithElevation, edges
 
 
 def extractGraphOf(boundingBox):
@@ -47,7 +49,8 @@ def extractGraphOf(boundingBox):
         print("downloading graph..")
         osmGraph = GraphFromBbox(boundingBox)
         osmGraph.saveHmlTo(folderOfGraph)
-    # fig, ax = ox.plot_graph(osmGraph.graph)
+    fig, ax = ox.plot_graph(osmGraph.graph, node_size=5)
+    fig.savefig('graph.pdf')
     return osmGraph
 
 
@@ -88,6 +91,9 @@ def findShortestPath(osmGraph, odPair):
     print("shortestPath:", shortestPath)
     # ox.plot_graph(osmGraph)
     osmGraph.plotPath(shortestPath, "shortest route.pdf")
+    edges = osmGraph.getEdges()
+    shortestEdgePath = nodePathTOEdgePath(shortestPath, edges)
+    calAndPrintPathAttributes(osmGraph, shortestEdgePath, "shortestPath")
     return shortestPath
 
 
@@ -96,6 +102,7 @@ def findEcoPathAndCalEnergy(osmGraph, odPair):
     ecoPath, ecoEnergy , ecoEdgePath = osmGraph.ecoPath(origNode,targetNode)
     print("ecoPath:", ecoPath, "ecoEnergy:", ecoEnergy, ecoEdgePath)
     osmGraph.plotPath(ecoPath, "eco route.pdf")
+    calAndPrintPathAttributes(osmGraph, ecoEdgePath, "ecoRoute")
     return ecoPath, ecoEnergy,  ecoEdgePath
 
 
@@ -104,6 +111,7 @@ def findFastestPathAndCalTime(osmGraph, odPair):
     fastestPath, shortestTime, fastEdgePath = osmGraph.fastestPath(origNode,targetNode)
     print("fastestPath:", fastestPath, "shortestTime:", shortestTime, fastEdgePath)
     osmGraph.plotPath(fastestPath,"fastest route.pdf")
+    calAndPrintPathAttributes(osmGraph, fastEdgePath, "fastestPath")
     return fastestPath, shortestTime, fastEdgePath
 
 
@@ -124,16 +132,6 @@ def calAndPrintPathAttributes(osmGraph, edgePath, pathname):
     print(pathname+":"+f"{numberOfSegments} segments, {length} meters, {energy} liters, {time} seconds")
     return
 
-
-'''
-def calAndPrintPathAttributes(osmGraph, path, edgePath, pathname):
-    numberOfSegments = len(path)
-    length = osmGraph.totalLength(path)
-    energy = osmGraph.totalEnergy(path)
-    time = osmGraph.totalTime(path)
-    print(pathname+":"+f"{numberOfSegments} segments, {length} meters, {energy} liters, {time} seconds")
-    return
-'''
 
 
 if __name__ == '__main__':

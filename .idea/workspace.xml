@@ -5,7 +5,14 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="66e55b93-4013-418c-b118-b87d9b6682ff" name="Default Changelist" comment="Version 4.0">
-      <change afterPath="$PROJECT_DIR$/testFunctions.ipynb" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Figure_1.pdf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/results/eco route.html" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/results/newplot.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/results/result_test.html" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/routing result.pdf" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/eco routing.py" beforeDir="false" afterPath="$PROJECT_DIR$/eco routing.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/edgeGdfPreprocessing.py" beforeDir="false" afterPath="$PROJECT_DIR$/edgeGdfPreprocessing.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -509,7 +516,14 @@
       <option name="project" value="LOCAL" />
       <updated>1621391453786</updated>
     </task>
-    <option name="localTasksCounter" value="45" />
+    <task id="LOCAL-00045" summary="Version 4.0">
+      <created>1621392024710</created>
+      <option name="number" value="00045" />
+      <option name="presentableId" value="LOCAL-00045" />
+      <option name="project" value="LOCAL" />
+      <updated>1621392024710</updated>
+    </task>
+    <option name="localTasksCounter" value="46" />
     <servers />
   </component>
   <component name="Vcs.Log.History.Properties">

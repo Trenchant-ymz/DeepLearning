@@ -34,9 +34,9 @@ def edgePreprocessing(nodesGdf, edgesGdf):
     # road type
     edgesGdf['roadtype'] = edgesGdf.apply(lambda x: highway_cal(x), axis=1)
     roadtypeDict = np.load('statistical data/road_type_dictionary.npy', allow_pickle=True).item()
-    edgesGdf['roadtype'] = edgesGdf['roadtype'].apply(lambda x: roadtypeDict[x] if x in roadtypeDict else 0)
-    roadtypeSet = {0, 1, 2, 3, 4, 8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 19, 20, 21}
-    edgesGdf['roadtype'] = edgesGdf['roadtype'].apply(lambda x: x if x in roadtypeSet else 0)
+    edgesGdf['roadtype'] = edgesGdf['roadtype'].apply(lambda x: roadtypeDict[x] if x in roadtypeDict else 10)
+    #roadtypeSet = {0, 1, 2, 3, 4, 8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 19, 20, 21}
+    #edgesGdf['roadtype'] = edgesGdf['roadtype'].apply(lambda x: x if x in roadtypeSet else 10)
     # time
     edgesGdf['timeOfTheDay'] = 9
     edgesGdf['timeOfTheDay'] = edgesGdf['timeOfTheDay'].apply(lambda x: calTimeStage(x))
