@@ -5,7 +5,8 @@ from edgeGdfPreprocessing import edgePreprocessing
 from estimationModel import EstimationModel
 from window import Window
 from pathGraph import NodeInPathGraph
-
+from _datetime import datetime
+from sortedcontainers import SortedDict
 
 class OsmGraph:
 
@@ -69,14 +70,23 @@ class OsmGraph:
 
 
     def __dijkstra(self):
+        timeD0 = datetime.now()
         initialStatus = self.__initDijkstra()
+        timeD1 = datetime.now()
+        recurTime = 0
+        #print('initialize', timeD1-timeD0)
         if initialStatus:
             while not self.__ifFinished():
                 if len(self.notPassedNodeDict) == 0:
                     print("No route")
                     return
                 else:
+                    timeD2 = datetime.now()
                     self.__onePaceUpdateOfDijstra()
+                    timeD3 = datetime.now()
+                    #print('one time update', timeD3 - timeD2)
+                    recurTime+=1
+            print('recurTime:', recurTime) # 0.01s for each recur
             pathWitMinVal = self.__generateMinValPath()
             edgePathWithMinVal = self.__generateMinValEdgePath()
             return pathWitMinVal, self.minVal, edgePathWithMinVal[-2:2:-1]
@@ -84,7 +94,9 @@ class OsmGraph:
 
     def __initDijkstra(self):
         self.passedNodesSet = set()
+
         self.notPassedNodeDict = dict()
+        #self.notPassedNodeDict = sorteddict()
         self.edgesGdf = self.getEdges()
         self.dummyWindow = Window(-1, -1, -1)
         self.dummyOriNodeInPathGraph = NodeInPathGraph(self.dummyWindow, self.origNode, None,-1)
@@ -160,15 +172,6 @@ class OsmGraph:
             length += self.edgesGdf.loc[i, 'length']
         return length
 
-    '''
-    def totalLength(self, path):
-        length = 0
-        for i, OdPair in enumerate(zip(path[:-1], path[1:])):
-            segmentId = self.edgesGdf[self.edgesGdf['odPair'] == OdPair].index[0]
-            length += self.edgesGdf.loc[segmentId, 'length']
-        return length
-    '''
-
 
     def totalEnergy(self, path):
         return self.__calculateValue(path, "fuel")
@@ -178,23 +181,31 @@ class OsmGraph:
 
 
     def __calculateValue(self, path, estimationType):
+        timeE = datetime.now()
         estimationModel = EstimationModel(estimationType)
         value = 0
         firstSeg = path[0]
         window = Window(-1, -1, firstSeg)
         prevWindowSeg = -1
+        timeF = datetime.now()
+        #print('read model', timeF-timeE)
         for i in range(len(path)):
+            timeA = datetime.now()
             prevWindowSeg = window.prevSeg
             window.prevSeg = window.midSeg
             window.midSeg = window.sucSeg
+
             if i < len(path)-1:
                 window.sucSeg = path[i+1]
             else:
                 window.sucSeg = -1
-
+            timeB = datetime.now()
             numericalFeatures, categoricalFeatures = window.extractFeatures(self.edgesGdf, prevWindowSeg)
+            timeC = datetime.now()
             addValue = estimationModel.predict(numericalFeatures, categoricalFeatures)
+            timeD = datetime.now()
             value += addValue
+            #print('window generation', timeB - timeA, 'feature extraction', timeC - timeB, 'estimation', timeD - timeC)
             #prevWindowSeg = tempPrevSeg
         return value
 

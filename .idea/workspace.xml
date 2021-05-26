@@ -5,14 +5,30 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="66e55b93-4013-418c-b118-b87d9b6682ff" name="Default Changelist" comment="Version 4.0">
-      <change afterPath="$PROJECT_DIR$/Figure_1.pdf" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/results/eco route.html" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/results/newplot.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/results/result_test.html" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/routing result.pdf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/DataDifferentiated/20/test_data.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/DataDifferentiated/20/train_data.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/DataDifferentiated/20/val_data.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/DataDifferentiated/test_data.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/DataDifferentiated/train_data.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/DataDifferentiated/val_data.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/best_13d_fuel.mdl" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/best_13d_time.mdl" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/eco route.pdf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/graph.pdf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/pretrained models test/best_13d_fuel.mdl" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/pretrained models test/best_13d_time.mdl" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/routingFunctions.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/shortest route.pdf" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/eco routing.py" beforeDir="false" afterPath="$PROJECT_DIR$/eco routing.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/edgeGdfPreprocessing.py" beforeDir="false" afterPath="$PROJECT_DIR$/edgeGdfPreprocessing.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/estimationModel.py" beforeDir="false" afterPath="$PROJECT_DIR$/estimationModel.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/obddata.py" beforeDir="false" afterPath="$PROJECT_DIR$/obddata.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/osmgraph.py" beforeDir="false" afterPath="$PROJECT_DIR$/osmgraph.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pathGraph.py" beforeDir="false" afterPath="$PROJECT_DIR$/pathGraph.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/prediction_result.csv" beforeDir="false" afterPath="$PROJECT_DIR$/prediction_result.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/results/resultSmoothed.html" beforeDir="false" afterPath="$PROJECT_DIR$/results/resultSmoothed.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/training and testing.py" beforeDir="false" afterPath="$PROJECT_DIR$/training and testing.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -62,28 +78,7 @@
     <property name="run.code.analysis.last.selected.profile" value="aDefault" />
     <property name="settings.editor.selected.configurable" value="preferences.pluginManager" />
   </component>
-  <component name="RunManager" selected="Python.eco routing">
-    <configuration name="download_data" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="DeepLearning" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/.." />
-      <option name="IS_MODULE_SDK" value="false" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/../download_data.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
+  <component name="RunManager" selected="Python.training and testing">
     <configuration name="eco routing" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="DeepLearning" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -189,13 +184,34 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
+    <configuration name="training and testing" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="DeepLearning" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/training and testing.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
     <recent_temporary>
       <list>
+        <item itemvalue="Python.training and testing" />
         <item itemvalue="Python.eco routing" />
         <item itemvalue="Python.obddata" />
         <item itemvalue="Python.main" />
         <item itemvalue="Python.nets" />
-        <item itemvalue="Python.download_data" />
       </list>
     </recent_temporary>
   </component>
@@ -523,7 +539,14 @@
       <option name="project" value="LOCAL" />
       <updated>1621392024710</updated>
     </task>
-    <option name="localTasksCounter" value="46" />
+    <task id="LOCAL-00046" summary="Version 4.0">
+      <created>1621500364212</created>
+      <option name="number" value="00046" />
+      <option name="presentableId" value="LOCAL-00046" />
+      <option name="project" value="LOCAL" />
+      <updated>1621500364212</updated>
+    </task>
+    <option name="localTasksCounter" value="47" />
     <servers />
   </component>
   <component name="Vcs.Log.History.Properties">

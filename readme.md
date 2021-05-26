@@ -70,3 +70,6 @@ estimating the eco route/ the shortest route/ the fastest route using the model 
 
 ### 2021/5/19
 version 4.0: Extract elevation data using ESRI Summarize Elevation API; Add functions which calculate length/ energy/ time for each path.
+
+### 2021/5/26
+version 4.1: Add a function which plots the calculated routes into a **vector** figure.
