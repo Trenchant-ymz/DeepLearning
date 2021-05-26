@@ -43,11 +43,12 @@ contains the statistical data of our data used in the pre-training stage, includ
 6. [edgeGdfPreprocessing.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/edgeGdfPreprocessing.py)
    extracts features of segments of the edge.gdf from the openstreetmap.
    
-7. [pathGraph.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/pathGraph.py),
+7. [routingFunctions.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/routingFunctions.py),
+[pathGraph.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/pathGraph.py),
    [osmgraph.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/osmgraph.py),
    [spaitalShape.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/spaitalShape.py) and
    [window.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/window.py)
-   are classes used in [eco routing.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/eco%20routing.py).
+   are functions/classes used in [eco routing.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/eco%20routing.py).
 
 
 
