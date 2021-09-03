@@ -8,10 +8,10 @@ class EstimationModel:
     numOfHeads = 1
     outputDimension = 1
     if torch.cuda.is_available():
-        device = torch.device("cpu")
+        device = torch.device("cuda")
     else:
         device = torch.device("cpu")
-
+    device = torch.device("cpu")
     def __init__(self, outputOfModel):
         '''
 
@@ -20,7 +20,7 @@ class EstimationModel:
         self.outputOfModel = outputOfModel
         self.model = AttentionBlk(feature_dim=self.featureDim, embedding_dim=self.embeddingDim,
                                   num_heads=self.numOfHeads, output_dimension=self.outputDimension)
-        self.modelAddress = "pretrained models test/best_13d_" + self.outputOfModel + ".mdl"
+        self.modelAddress = "pretrained models/best_13d_" + self.outputOfModel + ".mdl"
         self.model.load_state_dict(torch.load(self.modelAddress, map_location=self.device))
         self.model.to(self.device)
 

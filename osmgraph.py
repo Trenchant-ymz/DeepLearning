@@ -5,8 +5,10 @@ from edgeGdfPreprocessing import edgePreprocessing
 from estimationModel import EstimationModel
 from window import Window
 from pathGraph import NodeInPathGraph
-from _datetime import datetime
-from sortedcontainers import SortedDict
+import time
+from collections import defaultdict
+from routingAlgorithms import Dijkstra, AStar
+
 
 class OsmGraph:
 
@@ -24,7 +26,12 @@ class OsmGraph:
 
     def getEdges(self):
         _, edges = self.graphToGdfs()
+        self.uIdInEdges = defaultdict(list)
+        edges.apply(lambda x: self.__update(x), axis=1)
         return edges
+
+    def __update(self,x):
+        self.uIdInEdges[x.u].append(x.name)
 
     def getNodes(self):
         nodes, _ = self.graphToGdfs()
@@ -50,121 +57,34 @@ class OsmGraph:
         fig, ax = ox.plot_graph_routes(self.graph, pathList, route_colors=['g', 'r', 'b'], node_size=5)
         fig.savefig(filename)
 
-    def shortestPath(self, origNode, destNode):
+    def shortestPath(self, localRequest):
+        origNode, destNode = self.getODNodesFromODPair(localRequest.odPair)
         shortestPath = nx.shortest_path(G=self.graph, source=origNode, target=destNode, weight='length')
         return shortestPath
 
-    def ecoPath(self, origNode, destNode):
-        self.origNode = origNode
-        self.destNode = destNode
+    def ecoPath(self, localRequest):
+        self.origNode, self.destNode = self.getODNodesFromODPair(localRequest.odPair)
         self.estimationModel = EstimationModel("fuel")
-        ecoPath, ecoEnergy, ecoEdgePath = self.__dijkstra()
+
+        #ecoPath, ecoEnergy, ecoEdgePath = self.dijkstra()
+        ecoPath, ecoEnergy, ecoEdgePath = self.aStar(localRequest)
         return ecoPath, ecoEnergy, ecoEdgePath
 
-    def fastestPath(self, origNode, destNode):
-        self.origNode = origNode
-        self.destNode = destNode
+    def fastestPath(self, localRequest):
+        self.origNode, self.destNode = self.getODNodesFromODPair(localRequest.odPair)
         self.estimationModel = EstimationModel("time")
-        fastestPath, shortestTime, fastestEdgePath = self.__dijkstra()
+        fastestPath, shortestTime, fastestEdgePath = self.aStar(localRequest)
         return fastestPath, shortestTime, fastestEdgePath
 
+    def dijkstra(self):
+        routingModel = Dijkstra(self.getEdges(), self.uIdInEdges, self.origNode, self.destNode, self.estimationModel)
+        return routingModel.routing()
 
-    def __dijkstra(self):
-        timeD0 = datetime.now()
-        initialStatus = self.__initDijkstra()
-        timeD1 = datetime.now()
-        recurTime = 0
-        #print('initialize', timeD1-timeD0)
-        if initialStatus:
-            while not self.__ifFinished():
-                if len(self.notPassedNodeDict) == 0:
-                    print("No route")
-                    return
-                else:
-                    timeD2 = datetime.now()
-                    self.__onePaceUpdateOfDijstra()
-                    timeD3 = datetime.now()
-                    #print('one time update', timeD3 - timeD2)
-                    recurTime+=1
-            print('recurTime:', recurTime) # 0.01s for each recur
-            pathWitMinVal = self.__generateMinValPath()
-            edgePathWithMinVal = self.__generateMinValEdgePath()
-            return pathWitMinVal, self.minVal, edgePathWithMinVal[-2:2:-1]
-        return
-
-    def __initDijkstra(self):
-        self.passedNodesSet = set()
-
-        self.notPassedNodeDict = dict()
-        #self.notPassedNodeDict = sorteddict()
-        self.edgesGdf = self.getEdges()
-        self.dummyWindow = Window(-1, -1, -1)
-        self.dummyOriNodeInPathGraph = NodeInPathGraph(self.dummyWindow, self.origNode, None,-1)
-        self.dummyDestNodeInPathGraph = NodeInPathGraph(self.dummyWindow, -1, None,-1)
-        edgesGdfFromOrigNode = self.edgesGdf[self.edgesGdf['u'] == self.origNode]
-        for origEdgeIdInGdf in list(edgesGdfFromOrigNode.index):
-            nextNodeId = edgesGdfFromOrigNode.loc[origEdgeIdInGdf, 'v']
-            nextWindow = Window(self.dummyWindow.midSeg, self.dummyWindow.sucSeg, origEdgeIdInGdf)
-            self.notPassedNodeDict[NodeInPathGraph(nextWindow, nextNodeId, self.dummyOriNodeInPathGraph, origEdgeIdInGdf)] = 0
-        if not len(edgesGdfFromOrigNode):
-            print("not path from node:", self.origNode)
-            return False
-        else:
-            return True
-
-    def __ifFinished(self):
-        return self.dummyDestNodeInPathGraph in self.passedNodesSet
-
-    def __onePaceUpdateOfDijstra(self):
-        curNodeInPathGraph = self.__findMinValNotPassedNode()
-        # print(str(curNodeInPathGraph))
-        valOfCurNode = self.notPassedNodeDict.pop(curNodeInPathGraph)
-        self.passedNodesSet.add(curNodeInPathGraph)
-        if self.__isDestNode(curNodeInPathGraph):
-            self.minVal = valOfCurNode
-            self.destNodeGenerated = curNodeInPathGraph
-            return
-        nextNodeList = curNodeInPathGraph.generateNextNode(self.edgesGdf, self.destNode)
-        for nextNodeInPathGraph in nextNodeList:
-            self.__updateValOfNextNode(nextNodeInPathGraph, valOfCurNode)
-
-    def __findMinValNotPassedNode(self):
-        return min(self.notPassedNodeDict, key=self.notPassedNodeDict.get)
-
-    def __isDestNode(self, curNodeInPathGraph):
-        return curNodeInPathGraph == self.dummyDestNodeInPathGraph
-
-    def __updateValOfNextNode(self, nextNodeInPathGraph, valOfCurNode):
-        if nextNodeInPathGraph not in self.passedNodesSet:
-            valOfNextNode = nextNodeInPathGraph.calVal(self.estimationModel, self.edgesGdf)
-            if nextNodeInPathGraph not in self.notPassedNodeDict:
-                self.notPassedNodeDict[nextNodeInPathGraph] = valOfNextNode + valOfCurNode
-            if valOfNextNode + valOfCurNode < self.notPassedNodeDict[nextNodeInPathGraph]:
-                _ = self.notPassedNodeDict.pop(nextNodeInPathGraph)
-                self.notPassedNodeDict[nextNodeInPathGraph] = valOfNextNode + valOfCurNode
-
-    def __generateMinValPath(self):
-        dNode = self.destNodeGenerated
-        pathWitMinVal = [dNode.node]
-        while dNode.prevNode:
-            dNode = dNode.prevNode
-            pathWitMinVal.append(dNode.node)
-        return pathWitMinVal[:2:-1]
-
-    def __generateMinValEdgePath(self):
-        estimationModel = EstimationModel('fuel')
-        dNode = self.destNodeGenerated
-        val = 0
-        edgePathWithMinVal = [dNode.edge]
-        val += dNode.calVal(estimationModel, self.edgesGdf)
-        while dNode.prevNode:
-            dNode = dNode.prevNode
-
-            addval = dNode.calVal(estimationModel, self.edgesGdf)
-            val += addval
-            edgePathWithMinVal.append(dNode.edge)
-        #return edgePathWithMinVal[:2:-1]
-        return edgePathWithMinVal
+    def aStar(self, localRequest):
+        routingModel = AStar(self.getEdges(), self.uIdInEdges, self.origNode, self.destNode, self.estimationModel,
+                             localRequest, self.getNodes())
+        #print('initialized')
+        return routingModel.routing()
 
     def totalLength(self, path):
         length = 0
@@ -172,60 +92,31 @@ class OsmGraph:
             length += self.edgesGdf.loc[i, 'length']
         return length
 
-
     def totalEnergy(self, path):
         return self.__calculateValue(path, "fuel")
 
     def totalTime(self, path):
         return self.__calculateValue(path, "time")
 
-
     def __calculateValue(self, path, estimationType):
-        timeE = datetime.now()
         estimationModel = EstimationModel(estimationType)
         value = 0
         firstSeg = path[0]
         window = Window(-1, -1, firstSeg)
         prevWindowSeg = -1
-        timeF = datetime.now()
-        #print('read model', timeF-timeE)
         for i in range(len(path)):
-            timeA = datetime.now()
             prevWindowSeg = window.prevSeg
             window.prevSeg = window.midSeg
             window.midSeg = window.sucSeg
-
             if i < len(path)-1:
                 window.sucSeg = path[i+1]
             else:
                 window.sucSeg = -1
-            timeB = datetime.now()
-            numericalFeatures, categoricalFeatures = window.extractFeatures(self.edgesGdf, prevWindowSeg)
-            timeC = datetime.now()
-            addValue = estimationModel.predict(numericalFeatures, categoricalFeatures)
-            timeD = datetime.now()
-            value += addValue
-            #print('window generation', timeB - timeA, 'feature extraction', timeC - timeB, 'estimation', timeD - timeC)
-            #prevWindowSeg = tempPrevSeg
-        return value
 
-    '''
-    def __calculateValue(self, path, estimationType):
-        estimationModel = EstimationModel(estimationType)
-        value = 0
-        firstSeg = self.__findSegId(path, 0)
-        window = Window(-1, -1, firstSeg)
-        prevWindowSeg = -1
-        for i in range(len(path) - 1):
-            window, tempPrevSeg = self.__updateWindow(window, path, i)
             numericalFeatures, categoricalFeatures = window.extractFeatures(self.edgesGdf, prevWindowSeg)
             addValue = estimationModel.predict(numericalFeatures, categoricalFeatures)
             value += addValue
-            prevWindowSeg = tempPrevSeg
         return value
-    
-    '''
-
 
     def __findSegId(self, path, i):
         OdPair = (path[i], path[i+1])

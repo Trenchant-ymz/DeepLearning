@@ -71,9 +71,10 @@ else:
 # root for the estimation output file
 # output_root = "/content/drive/MyDrive/Colab_Notebooks/DeepLearning/prediction_result.csv"
 # local
-ckpt_path = "best_13d_fuel.mdl"
-#ckpt_path = "best_13d_time.mdl"
-data_root = "normalized data"
+#ckpt_path = "best_13d_fuel.mdl"
+ckpt_path = "best_13d_time.mdl"
+data_root = "model_data_new"
+#data_root = "normalized data"
 #data_root = "DataDifferentiated"
 output_root = "prediction_result.csv"
 
@@ -320,8 +321,8 @@ def main(mode, output = False):
 
 if __name__ == '__main__':
     #main("test")
-    main("test", output = True)
-    #main("train")
+    #main("test", output = True)
+    main("train")
 
 # 602 parameters
 # test_length_path = [1,2,5,10,20,50,100,200,500]

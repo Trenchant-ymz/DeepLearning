@@ -2,10 +2,10 @@ import numpy as np
 import pandas as pd
 import math
 
-def edgePreprocessing(nodesGdf, edgesGdf):
+def edgePreprocessing(nodesGdf, edgesGdf, locationRequest):
     edgesGdf['odPair'] = edgesGdf.apply(lambda x: (x.u, x.v), axis=1)
     # mass
-    edgesGdf['mass'] = 23000
+    edgesGdf['mass'] = locationRequest.mass
     edgesGdf['mass'] = edgesGdf['mass'].apply(lambda x: (x- 23185.02515) / 8227.65140266416)
     # speed limit
     edgesGdf['speedLimit'] = edgesGdf.apply(lambda x: calSpeedlimit(x), axis=1)
@@ -34,13 +34,13 @@ def edgePreprocessing(nodesGdf, edgesGdf):
     # road type
     edgesGdf['roadtype'] = edgesGdf.apply(lambda x: highway_cal(x), axis=1)
     roadtypeDict = np.load('statistical data/road_type_dictionary.npy', allow_pickle=True).item()
-    edgesGdf['roadtype'] = edgesGdf['roadtype'].apply(lambda x: roadtypeDict[x] if x in roadtypeDict else 10)
+    edgesGdf['roadtype'] = edgesGdf['roadtype'].apply(lambda x: roadtypeDict[x] if x in roadtypeDict else 0)
     roadtypeSet = {0, 1, 2, 3, 4, 8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 19, 20, 21}
-    edgesGdf['roadtype'] = edgesGdf['roadtype'].apply(lambda x: x if x in roadtypeSet else 10)
+    edgesGdf['roadtype'] = edgesGdf['roadtype'].apply(lambda x: x if x in roadtypeSet else 0)
     # time
-    edgesGdf['timeOfTheDay'] = 9
+    edgesGdf['timeOfTheDay'] = locationRequest.timeOfTheDay
     edgesGdf['timeOfTheDay'] = edgesGdf['timeOfTheDay'].apply(lambda x: calTimeStage(x))
-    edgesGdf['dayOfTheWeek'] = 1
+    edgesGdf['dayOfTheWeek'] = locationRequest.dayOfTheWeek
 
     # lanes
     edgesGdf['lanes'] = edgesGdf.apply(lambda x: cal_lanes(x), axis=1)
