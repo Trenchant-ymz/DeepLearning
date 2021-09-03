@@ -74,3 +74,6 @@ version 4.0: Extract elevation data using ESRI Summarize Elevation API; Add func
 
 ### 2021/5/26
 version 4.1: Add a function which plots the calculated routes into a **vector** figure.
+
+### 2021/9/3
+version 5.0: Using a new routing algorithm(A*) which reduces the routing time from 3.3 hours to 1.5 hour 
