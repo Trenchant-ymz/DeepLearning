@@ -4,39 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="66e55b93-4013-418c-b118-b87d9b6682ff" name="Default Changelist" comment="Version 4.1">
-      <change afterPath="$PROJECT_DIR$/DataDifferentiated/20/test_data.csv" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/DataDifferentiated/20/train_data.csv" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/DataDifferentiated/20/val_data.csv" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/DataDifferentiated/test_data.csv" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/DataDifferentiated/train_data.csv" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/DataDifferentiated/val_data.csv" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/dataPreprocessing.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/fastest route.pdf" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/model_data_new/20/train_data.csv" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/model_data_new/20/val_data.csv" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/pretrained models test/best_13d_fuel.mdl" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/pretrained models test/best_13d_time.mdl" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/results/routing result.html" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/results/vectorgraph.html" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/results/vectorgraphPostprocessed.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Get elevations from ArcGIS summarize elevation.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/Get elevations from ArcGIS summarize elevation.ipynb" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/best_13d_fuel.mdl" beforeDir="false" afterPath="$PROJECT_DIR$/best_13d_fuel.mdl" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/best_13d_time.mdl" beforeDir="false" afterPath="$PROJECT_DIR$/best_13d_time.mdl" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/eco route.pdf" beforeDir="false" afterPath="$PROJECT_DIR$/eco route.pdf" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/eco routing.py" beforeDir="false" afterPath="$PROJECT_DIR$/eco routing.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/edgeGdfPreprocessing.py" beforeDir="false" afterPath="$PROJECT_DIR$/edgeGdfPreprocessing.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/estimationModel.py" beforeDir="false" afterPath="$PROJECT_DIR$/estimationModel.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/graph.pdf" beforeDir="false" afterPath="$PROJECT_DIR$/graph.pdf" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/obddata.py" beforeDir="false" afterPath="$PROJECT_DIR$/obddata.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/osmgraph.py" beforeDir="false" afterPath="$PROJECT_DIR$/osmgraph.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/prediction_result.csv" beforeDir="false" afterPath="$PROJECT_DIR$/prediction_result.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/results/resulttest.html" beforeDir="false" afterPath="$PROJECT_DIR$/results/resulttest.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/routing result.pdf" beforeDir="false" afterPath="$PROJECT_DIR$/routing result.pdf" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/shortest route.pdf" beforeDir="false" afterPath="$PROJECT_DIR$/shortest route.pdf" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/training and testing.py" beforeDir="false" afterPath="$PROJECT_DIR$/training and testing.py" afterDir="false" />
-    </list>
+    <list default="true" id="66e55b93-4013-418c-b118-b87d9b6682ff" name="Default Changelist" comment="Version 5.0" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -230,13 +198,6 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1616853852624</updated>
-    </task>
-    <task id="LOCAL-00001" summary="3-30">
-      <created>1617093036358</created>
-      <option name="number" value="00001" />
-      <option name="presentableId" value="LOCAL-00001" />
-      <option name="project" value="LOCAL" />
-      <updated>1617093036358</updated>
     </task>
     <task id="LOCAL-00002" summary="test git">
       <created>1617093268019</created>
@@ -567,7 +528,21 @@
       <option name="project" value="LOCAL" />
       <updated>1622022121899</updated>
     </task>
-    <option name="localTasksCounter" value="49" />
+    <task id="LOCAL-00049" summary="Version 5.0">
+      <created>1630685887698</created>
+      <option name="number" value="00049" />
+      <option name="presentableId" value="LOCAL-00049" />
+      <option name="project" value="LOCAL" />
+      <updated>1630685887698</updated>
+    </task>
+    <task id="LOCAL-00050" summary="Version 5.0">
+      <created>1630686067005</created>
+      <option name="number" value="00050" />
+      <option name="presentableId" value="LOCAL-00050" />
+      <option name="project" value="LOCAL" />
+      <updated>1630686067005</updated>
+    </task>
+    <option name="localTasksCounter" value="51" />
     <servers />
   </component>
   <component name="Vcs.Log.History.Properties">
@@ -610,6 +585,7 @@
     <MESSAGE value="Version 3.0" />
     <MESSAGE value="Version 4.0" />
     <MESSAGE value="Version 4.1" />
-    <option name="LAST_COMMIT_MESSAGE" value="Version 4.1" />
+    <MESSAGE value="Version 5.0" />
+    <option name="LAST_COMMIT_MESSAGE" value="Version 5.0" />
   </component>
 </project>
