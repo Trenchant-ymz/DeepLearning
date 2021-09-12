@@ -24,19 +24,11 @@ class PositionwiseFeedForward(nn.Module):
         # Torch linears have a `b` by default.
         self.net_dropped = torch.nn.Sequential(
             nn.Linear(d_model, d_ff),
-            #nn.Dropout(0.5),
-            #nn.ReLU(),
-            #nn.Linear(d_ff, d_ff),
-            #nn.Dropout(0.5),
             nn.ReLU(),
             nn.Linear(d_ff, d_model)
         )
-        #self.w_1 = nn.Linear(d_model, d_ff)
 
-        #self.w_2 = nn.Linear(d_ff, d_ff)
-        #self.w_3 = nn.Linear(d_ff, d_model)
     def forward(self, x):
-        #return self.w_3(F.relu(self.w_2(F.relu(self.w_1(x)))))
         return self.net_dropped(x)
 
 
@@ -46,7 +38,7 @@ class AttentionBlk(nn.Module):
         super(AttentionBlk, self).__init__()
         self.embedding_dim = embedding_dim
         self.feature_dim = feature_dim
-        self.total_embed_dim =  self.feature_dim + sum(self.embedding_dim)
+        self.total_embed_dim = self.feature_dim + sum(self.embedding_dim)
         self.output_dimension = output_dimension
         self.num_heads = num_heads
         # embedding layers for 7 categorical features
@@ -87,47 +79,27 @@ class AttentionBlk(nn.Module):
         '''
         # [batch_sz, window_sz, embedding dim]
         embedded = self.embedding_road_type(c[:,0,:])
-        #print("embedded", embedded)
-        embedded = torch.cat([embedded,self.embedding_time_stage(c[:, 1, :])], dim=-1)
-        #print("embedded", embedded)
+        embedded = torch.cat([embedded, self.embedding_time_stage(c[:, 1, :])], dim=-1)
         embedded = torch.cat([embedded, self.embedding_week_day(c[:, 2, :])], dim=-1)
-        #print("embedded", embedded)
         embedded = torch.cat([embedded, self.embedding_lanes(c[:, 3, :])], dim=-1)
-        #print("embedded", embedded)
         embedded = torch.cat([embedded, self.embedding_bridge(c[:, 4, :])], dim=-1)
-        #print("embedded", embedded)
         embedded = torch.cat([embedded, self.embedding_endpoint_u(c[:, 5, :])], dim=-1)
-        #print("embedded", embedded)
         embedded_6 = self.embedding_endpoint_v(c[:, 6, :])
-        #print("embedded_6",c[:, 6, :],embedded_6)
         embedded = torch.cat([embedded, embedded_6], dim=-1)
-        #print("embedded", embedded)
-        #print(x.shape)
         # [ batch, window size, feature dimension+ sum embedding dimension]
         x = torch.cat([x, embedded], dim=-1)
-        #print("x", x)
         # [ window size, batch,  feature dimension+ sum embedding dimension]
         x = x.transpose(0, 1).contiguous()
-        #print("x", x)
-        #print(x.shape)
         # q -> [1, batch, feature dimension+ sum embedding dimension]
         # middle of the window
         q = x[x.shape[0] // 2, :, :].unsqueeze(0)
-        #print("q", q)
         # x -> [windowsz, batch, feature dimension+ sum embedding dimension]
         x_output, output_weight = self.selfattn(q,x,x)
-        #print("x_output", x_output)
         # x_output -> [1, batchsz, feature dimension+ sum embedding dimension]
         x_output = self.norm(q+x_output)
-        #print("x_output", x_output)
-        #print("x_output.shape", x_output.shape)
         x_output_ff = self.feed_forward(x_output.squeeze(0))
-        #print("x_output_ff", x_output_ff)
-        #print("x_output_ff.shape", x_output_ff.shape)
         x_output = self.norm(x_output.squeeze(0) + x_output_ff)
-        #print("x_output", x_output)
         x_output = self.linear(x_output)
-        #print("x_output", x_output)
         return F.relu(x_output)
 
 def testNet():

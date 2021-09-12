@@ -3,22 +3,27 @@ import math
 
 
 class Window:
-    def __init__(self, prevSeg, midSeg, sucSeg):
+    def __init__(self, minusSeg, prevSeg, midSeg, sucSeg):
+        self.minusSeg = minusSeg
         self.prevSeg = prevSeg
         self.midSeg = midSeg
         self.sucSeg = sucSeg
 
     def __eq__(self, other):
-        return self.prevSeg == other.prevSeg and self.midSeg == other.midSeg and self.sucSeg == other.sucSeg
+        return self.prevSeg == other.prevSeg \
+               and self.midSeg == other.midSeg and self.sucSeg == other.sucSeg
 
     def __str__(self):
         return "[" + str(self.prevSeg) + "," + str(self.midSeg) + "," + str(self.sucSeg) + "]"
 
     def getTuple(self):
-        return tuple([self.prevSeg, self.midSeg, self.sucSeg])
+        return str(self.prevSeg) + str(self.midSeg) + str(self.sucSeg)
 
-    def extractFeatures(self, edgesGdf, prevEdgeId):
-        prevSegNumFeature, prevSegCatFeature = edgeFeature(self.prevSeg, edgesGdf, prevEdgeId)
+    def valid(self):
+        return self.prevSeg != self.sucSeg
+
+    def extractFeatures(self, edgesGdf):
+        prevSegNumFeature, prevSegCatFeature = edgeFeature(self.prevSeg, edgesGdf, self.minusSeg)
         midSegNumFeature, midSegCatFeature = edgeFeature(self.midSeg, edgesGdf, self.prevSeg)
         sucSegNumFeature, sucSegCatFeature = edgeFeature(self.sucSeg, edgesGdf, self.midSeg)
         numericalFeatures = [prevSegNumFeature, midSegNumFeature, sucSegNumFeature]

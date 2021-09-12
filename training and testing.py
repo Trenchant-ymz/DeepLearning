@@ -10,6 +10,8 @@ import csv
 import time
 import visdom
 from tqdm import tqdm
+# Before running the code, run 'python -m visdom.server' in the terminal to open visdom panel.
+
 
 # batch size 512 BEST
 batchsz = 512
@@ -49,6 +51,7 @@ window_sz = 3
 # pace between paths
 pace_train = 5
 pace_test = pace_train
+
 if pace_train>train_path_length:
     pace_train = train_path_length
     print("pace train has been changed to:", pace_train)
@@ -72,8 +75,8 @@ else:
 # output_root = "/content/drive/MyDrive/Colab_Notebooks/DeepLearning/prediction_result.csv"
 # local
 #ckpt_path = "best_13d_fuel.mdl"
-ckpt_path = "best_13d_time.mdl"
-data_root = "model_data_new"
+ckpt_path = "best_13d_fuelSimulateData.mdl"
+data_root = "model_data_newSep"
 #data_root = "normalized data"
 #data_root = "DataDifferentiated"
 output_root = "prediction_result.csv"
@@ -82,7 +85,7 @@ output_root = "prediction_result.csv"
 train_db = ObdData(root=data_root,mode = "train",percentage=10, window_size=window_sz,\
                    path_length=train_path_length, label_dimension=output_dimension, pace=pace_train,withoutElevation=False)
 val_db = ObdData(root=data_root,mode="val",percentage=10,window_size=window_sz,\
-                 path_length=test_path_length, label_dimension=output_dimension, pace=pace_test,withoutElevation=False)
+                 path_length=train_path_length, label_dimension=output_dimension, pace=pace_test,withoutElevation=False)
 test_db = ObdData(root=data_root,mode="test",percentage=10,window_size=window_sz,\
                   path_length=test_path_length, label_dimension=output_dimension, pace=pace_test,withoutElevation=False)
 train_loader = DataLoader(train_db, batch_size=batchsz, num_workers=0)
@@ -319,6 +322,7 @@ def main(mode, output = False):
         test(output = output)
 
 
+
 if __name__ == '__main__':
     #main("test")
     #main("test", output = True)
@@ -348,4 +352,25 @@ test_mape(%): 8.374053239822388
 test_mse: 4.772601
 test_mape(%): 8.564424514770508
 test_mse: 14.494676
+'''
+
+'''
+simulated data (ml)
+test_mape(%): 183.24886560440063
+test_mse: 4879.1274
+test_mape(%): 81.87260627746582
+test_mse: 7834.052
+test_mape(%): 36.31833791732788
+test_mse: 21385.436
+test_mape(%): 26.705068349838257
+test_mse: 52697.875
+test_mape(%): 21.716944873332977
+test_mse: 154327.31
+test_mape(%): 17.657427489757538
+test_mse: 680198.25
+test_mape(%): 14.63715136051178
+test_mse: 1677317.1
+test_mape(%): 13.116849958896637
+test_mse: 3823652.5
+
 '''

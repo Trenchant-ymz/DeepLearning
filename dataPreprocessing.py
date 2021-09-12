@@ -15,9 +15,13 @@ import gc
 from os import walk
 import geopandas as gpd
 import math
+import random
+from random import shuffle
+import csv
+
 
 cnt = 0
-f = r'./result_new/features_percentile005'
+f = r'./resultNewSep/features_percentile005'
 path_list = os.listdir(f)
 path_list.sort(key=lambda x:int(x[15:-4]))
 for file in path_list:
@@ -73,13 +77,11 @@ for i in range(len(df_test)):
         cnt += 1
     df_test.loc[i,'trip']  = cnt
 
-import random
-from random import shuffle
+
 random.seed(1234)
 trip_num = len(df_test['trip_id'].unique())
 k_folder_list = list(range(trip_num))
 shuffle(k_folder_list)
-k_folder_list[:10]
 
 #60-20-20
 train_list  = k_folder_list[: int(0.6*len(k_folder_list))]
@@ -121,7 +123,7 @@ for i in d.sort_values().index:
     dictionary[i] = road_tp
     road_tp += 1
 
-import csv
+
 output_root = "road_type_dictionary.csv"
 csvFile = open(output_root, "w")
 writer = csv.writer(csvFile)
@@ -133,7 +135,7 @@ np.save('road_type_dictionary.npy', dictionary)
 
 endpoints_dictionary = np.load('endpoints_dictionary.npy', allow_pickle=True).item()
 
-import csv
+
 output_root = "endpoints_dictionary.csv"
 csvFile = open(output_root, "w")
 writer = csv.writer(csvFile)
@@ -198,7 +200,7 @@ df_t.to_csv("test_data_1.csv")
 path = r'data_dropped'
 for f,m,n in os.walk(path):
     if n:
-        outputpath = os.path.join("DeepLearning","model_data_new")
+        outputpath = os.path.join("DeepLearning","model_data_newSep")
         print(outputpath)
         if not os.path.exists(outputpath):
             os.mkdir(outputpath)
@@ -215,7 +217,7 @@ for f,m,n in os.walk(path):
             df_train.describe()
             # df_train['energy_consumption_total'] = df_train['energy_consumption_total'].apply(lambda x: 100*x)
             df_train['data'] = df_train.apply(lambda x: [x['speed_limit'],x['mass'],x['elevation_change'],x['previous_orientation'],x['length'],x['direction_angle']], axis = 1)
-            df_train['label'] = df_train.apply(lambda x: [x["energy_consumption_total"],x["time"]], axis = 1)
+            df_train['label'] = df_train.apply(lambda x: [x["siumlatedEnergyConsumption"],x["time"]], axis = 1)
             trip_before = -1
             position = 1
             for i in range(len(df_train)):

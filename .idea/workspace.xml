@@ -4,7 +4,35 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="66e55b93-4013-418c-b118-b87d9b6682ff" name="Default Changelist" comment="Version 5.0" />
+    <list default="true" id="66e55b93-4013-418c-b118-b87d9b6682ff" name="Default Changelist" comment="Version 5.0">
+      <change afterPath="$PROJECT_DIR$/Untitled-1.ipynb" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/best_13d_fuelSimulateData.mdl" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/foo.pstats" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/foo.stats" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/pretrained models/best_13d_fuelSimulateData.mdl" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/pretrained models/best_13d_timeSimulateData.mdl" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/profile.pstats" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/profile.stats" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/profileDropped.pstats" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/profileSep11.pstats" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/temp.dat" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test.profile" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test1.out" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/dataPreprocessing.py" beforeDir="false" afterPath="$PROJECT_DIR$/dataPreprocessing.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/eco route.pdf" beforeDir="false" afterPath="$PROJECT_DIR$/eco route.pdf" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/eco routing.py" beforeDir="false" afterPath="$PROJECT_DIR$/ecoRouting.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/fastest route.pdf" beforeDir="false" afterPath="$PROJECT_DIR$/fastest route.pdf" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nets.py" beforeDir="false" afterPath="$PROJECT_DIR$/nets.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/obddata.py" beforeDir="false" afterPath="$PROJECT_DIR$/obddata.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/osmgraph.py" beforeDir="false" afterPath="$PROJECT_DIR$/osmgraph.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pathGraph.py" beforeDir="false" afterPath="$PROJECT_DIR$/pathGraph.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/prediction_result.csv" beforeDir="false" afterPath="$PROJECT_DIR$/prediction_result.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/routingAlgorithms.py" beforeDir="false" afterPath="$PROJECT_DIR$/routingAlgorithms.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/shortest route.pdf" beforeDir="false" afterPath="$PROJECT_DIR$/shortest route.pdf" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/training and testing.py" beforeDir="false" afterPath="$PROJECT_DIR$/training and testing.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/window.py" beforeDir="false" afterPath="$PROJECT_DIR$/window.py" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -53,8 +81,13 @@
     <property name="run.code.analysis.last.selected.profile" value="aDefault" />
     <property name="settings.editor.selected.configurable" value="preferences.pluginManager" />
   </component>
-  <component name="RunManager" selected="Python.eco routing">
-    <configuration name="eco routing" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="D:\STUDYYYYYYYY\eco routing\Murphy\python workspace\DeepLearning" />
+    </key>
+  </component>
+  <component name="RunManager" selected="Python.ecoRouting (1)">
+    <configuration name="dataPreprocessing" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="DeepLearning" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
@@ -66,7 +99,49 @@
       <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/eco routing.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/dataPreprocessing.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="ecoRouting (1)" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="DeepLearning" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/ecoRouting.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="ecoRouting" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="DeepLearning" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="D:\STUDYYYYYYYY\eco routing\Murphy\python workspace\DeepLearning\ecoRouting.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -96,7 +171,7 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration name="main" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+    <configuration name="hw01" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="DeepLearning" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
@@ -104,53 +179,11 @@
         <env name="PYTHONUNBUFFERED" value="1" />
       </envs>
       <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
-      <option name="IS_MODULE_SDK" value="true" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/../../../../UMN/TA/CSCI 1133" />
+      <option name="IS_MODULE_SDK" value="false" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/main.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
-    <configuration name="nets" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="DeepLearning" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/nets.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
-    <configuration name="obddata" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="DeepLearning" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/obddata.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/../../../../UMN/TA/CSCI 1133/hw01.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -182,11 +215,11 @@
     </configuration>
     <recent_temporary>
       <list>
-        <item itemvalue="Python.eco routing" />
+        <item itemvalue="Python.ecoRouting (1)" />
+        <item itemvalue="Python.hw01" />
+        <item itemvalue="Python.ecoRouting" />
         <item itemvalue="Python.training and testing" />
-        <item itemvalue="Python.obddata" />
-        <item itemvalue="Python.main" />
-        <item itemvalue="Python.nets" />
+        <item itemvalue="Python.dataPreprocessing" />
       </list>
     </recent_temporary>
   </component>
@@ -198,13 +231,6 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1616853852624</updated>
-    </task>
-    <task id="LOCAL-00002" summary="test git">
-      <created>1617093268019</created>
-      <option name="number" value="00002" />
-      <option name="presentableId" value="LOCAL-00002" />
-      <option name="project" value="LOCAL" />
-      <updated>1617093268019</updated>
     </task>
     <task id="LOCAL-00003" summary="zlfxsd">
       <created>1617095790812</created>
@@ -542,7 +568,14 @@
       <option name="project" value="LOCAL" />
       <updated>1630686067005</updated>
     </task>
-    <option name="localTasksCounter" value="51" />
+    <task id="LOCAL-00051" summary="Version 5.0">
+      <created>1630686270989</created>
+      <option name="number" value="00051" />
+      <option name="presentableId" value="LOCAL-00051" />
+      <option name="project" value="LOCAL" />
+      <updated>1630686270989</updated>
+    </task>
+    <option name="localTasksCounter" value="52" />
     <servers />
   </component>
   <component name="Vcs.Log.History.Properties">

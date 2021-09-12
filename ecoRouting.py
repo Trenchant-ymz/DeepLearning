@@ -8,6 +8,9 @@ import osmnx as ox
 import math
 import time
 
+# Profiling: python -m cProfile -o profile.pstats ecoRouting.py
+# Visualize profile: snakeviz profile.pstats
+
 
 class LocationRequest:
     def __init__(self):
@@ -15,11 +18,12 @@ class LocationRequest:
         # (longitude, latitude)
         self.origin = Point(-93.2219, 44.979)
         # test
-        #origin = Point(-93.4254, 44.7888)
+        #self.origin = Point(-93.4254, 44.7888)
+        #self.origin = Point(-93.470167, 44.799720)
         #origin = Point(-93.2466, 44.8959)
         # Shakopee East (Depot):
         self.destination = Point(-93.4620, 44.7903)
-        #destination = Point(-93.4495, 44.8611)
+        #self.destination = Point(-93.230358, 44.973583)
 
         self.odPair = OdPair(self.origin, self.destination)
         self.boundingBox = Box(-93.4975, -93.1850, 44.7458, 45.0045)
@@ -43,19 +47,20 @@ def main():
     t1 = time.time()
     print('initialized, time used:', t1-t0, 's')
     # shortest route
-    #shortestNodePath = findShortestPath(graphWithElevation, locationRequest)
-    #shortestPath = nodePathTOEdgePath(shortestNodePath, edges)
-    #calAndPrintPathAttributes(graphWithElevation, shortestPath, "shortestPath")
+    shortestNodePath = findShortestPath(graphWithElevation, locationRequest)
+    shortestPath = nodePathTOEdgePath(shortestNodePath, edges)
+    calAndPrintPathAttributes(graphWithElevation, shortestPath, "shortestPath")
     # eco route
     ecoRoute, energyOnEcoRoute, ecoEdgePath = findEcoPathAndCalEnergy(graphWithElevation, locationRequest)
     calAndPrintPathAttributes(graphWithElevation, ecoEdgePath, "ecoRoute")
     t2 = time.time()
     print('time used for eco routing:', t2 - t1, 's')
     # fastest route
-    fastestPath, shortestTime, fastestEdgePath = findFastestPathAndCalTime(graphWithElevation, locationRequest)
-    calAndPrintPathAttributes(graphWithElevation, fastestEdgePath, "fastestPath")
+    #fastestPath, shortestTime, fastestEdgePath = findFastestPathAndCalTime(graphWithElevation, locationRequest)
+    #calAndPrintPathAttributes(graphWithElevation, fastestEdgePath, "fastestPath")
     #graphWithElevation.plotPathList([shortestNodePath, ecoRoute, fastestPath],'routing result.pdf')
-
+    t3 = time.time()
+    print('time used for short time routing:', t3 - t2, 's')
 
 
 def extractGraphOf(boundingBox):
@@ -106,14 +111,14 @@ def findShortestPath(osmGraph, localRequest):
     shortestPath = osmGraph.shortestPath(localRequest)
     print("shortestPath:", shortestPath)
     # ox.plot_graph(osmGraph)
-    osmGraph.plotPath(shortestPath, "shortest route.pdf")
+    #osmGraph.plotPath(shortestPath, "shortest route.pdf")
     return shortestPath
 
 
 def findEcoPathAndCalEnergy(osmGraph, localRequest):
     ecoPath, ecoEnergy , ecoEdgePath = osmGraph.ecoPath(localRequest)
     print("ecoPath:", ecoPath, "ecoEnergy:", ecoEnergy, ecoEdgePath)
-    osmGraph.plotPath(ecoPath, "eco route.pdf")
+    #osmGraph.plotPath(ecoPath, "eco route.pdf")
     return ecoPath, ecoEnergy,  ecoEdgePath
 
 
@@ -121,7 +126,7 @@ def findFastestPathAndCalTime(osmGraph, localRequest):
 
     fastestPath, shortestTime, fastEdgePath = osmGraph.fastestPath(localRequest)
     print("fastestPath:", fastestPath, "shortestTime:", shortestTime, fastEdgePath)
-    # osmGraph.plotPath(fastestPath,"fastest route.pdf")
+    #osmGraph.plotPath(fastestPath,"fastest route.pdf")
     return fastestPath, shortestTime, fastEdgePath
 
 

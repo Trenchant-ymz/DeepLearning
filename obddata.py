@@ -84,7 +84,7 @@ class ObdData(Dataset):
                             data_row[1] = list(map(float, data_row[1][1:-1].split(", ")))
                         elif self.label_dimension == 1:
                             # [0] for fuel; [1] for time
-                            data_row[1] = list(map(float, data_row[1][1:-1].split(", ")))[1]
+                            data_row[1] = list(map(float, data_row[1][1:-1].split(", ")))[0]
 
                         data_row[2:] = map(int, map(float, data_row[2:]))
                         data_list.append(data_row)

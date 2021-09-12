@@ -8,33 +8,47 @@ from pathGraph import NodeInPathGraph
 import time
 from collections import defaultdict
 import math
+import pandas as pd
+import heapq
+from bintrees import RBTree
 
 class Dijkstra:
-    def __init__(self, edgesGdf, uIdInEdges, origNode, destNode, estimationModel):
+    def __init__(self, edgesGdf, uToV , origNode, destNode, estimationModel):
+
         self.passedNodesSet = set()
+        #self.notPassedNodeSet = set()
+        #self.notPassedNodeHeapq = []
         self.notPassedNodeDict = dict()
         self.edgesGdf = edgesGdf
-        self.dummyWindow = Window(-1, -1, -1)
+        #self.edgesGdf['index'] = self.edgesGdf.index
+        #self.edgesUsingIdAsIndex = self.edgesGdf.set_index(['u'])
+        self.uToV = uToV
+        self.dummyWindow = Window(-1, -1, -1, -1)
         self.origNode = origNode
         self.destNode = destNode
-        self.uIdInEdges = uIdInEdges
         self.estimationModel = estimationModel
         self.dummyOriNodeInPathGraph = NodeInPathGraph(self.dummyWindow, self.origNode, None, -1)
         self.dummyDestNodeInPathGraph = NodeInPathGraph(self.dummyWindow, -1, None, -1)
-        edgesGdfFromOrigNode = self.edgesGdf[self.edgesGdf['u'] == self.origNode]
-        self.initializeDict(edgesGdfFromOrigNode)
-        if not len(edgesGdfFromOrigNode):
+        listOfNodesFromOrig = self.uToV[self.origNode]
+        print(listOfNodesFromOrig)
+        self.initializeDict(listOfNodesFromOrig)
+        if not len(listOfNodesFromOrig):
             print("not path from node:", self.origNode)
             self.__initializedStatus = False
         else:
             self.__initializedStatus = True
 
-    def initializeDict(self, edgesGdfFromOrigNode):
-        for origEdgeIdInGdf in list(edgesGdfFromOrigNode.index):
-            nextNodeId = edgesGdfFromOrigNode.loc[origEdgeIdInGdf, 'v']
-            nextWindow = Window(self.dummyWindow.midSeg, self.dummyWindow.sucSeg, origEdgeIdInGdf)
-            self.notPassedNodeDict[
-                NodeInPathGraph(nextWindow, nextNodeId, self.dummyOriNodeInPathGraph, origEdgeIdInGdf)] = 0
+    def initializeDict(self, listOfNodesFromOrig):
+        # print(edgesGdfFromNode.iloc[0])
+        for edgeIdAndV in listOfNodesFromOrig:
+            edgeIdInGdf = edgeIdAndV[0]
+            nextNodeId = edgeIdAndV[1]
+            nextWindow = Window(self.dummyWindow.prevSeg, self.dummyWindow.midSeg, self.dummyWindow.sucSeg, edgeIdInGdf)
+            nextNode = NodeInPathGraph(nextWindow, nextNodeId, self.dummyOriNodeInPathGraph, edgeIdInGdf)
+            self.notPassedNodeDict[nextNode] = 0
+            #heapq.heappush(self.notPassedNodeHeapq, (0, nextNode))
+
+        return
 
     def routing(self):
         steps = 0
@@ -67,6 +81,7 @@ class Dijkstra:
         #t1 = time.time()
         # print(str(curNodeInPathGraph))
         valOfCurNode = self.notPassedNodeDict.pop(curNodeInPathGraph)
+        #valOfCurNode, curNodeInPathGraph = heapq.heappop(self.notPassedNodeHeapq)
         #t2 = time.time()
         self.passedNodesSet.add(curNodeInPathGraph)
         #t3 = time.time()
@@ -75,7 +90,7 @@ class Dijkstra:
             self.destNodeGenerated = curNodeInPathGraph
             return
         #t6 = time.time()
-        nextNodeList = curNodeInPathGraph.generateNextNode(self.edgesGdf, self.uIdInEdges, self.destNode)
+        nextNodeList = curNodeInPathGraph.generateNextNode(self.uToV, self.destNode)
         #t4 = time.time()
         for nextNodeInPathGraph in nextNodeList:
             self.updateValOfNextNode(nextNodeInPathGraph, valOfCurNode)
@@ -91,7 +106,7 @@ class Dijkstra:
     def updateValOfNextNode(self, nextNodeInPathGraph, valOfCurNode):
         if nextNodeInPathGraph not in self.passedNodesSet:
             valOfNextNode = nextNodeInPathGraph.calVal(self.estimationModel, self.edgesGdf)
-            if nextNodeInPathGraph not in self.notPassedNodeDict:
+            if nextNodeInPathGraph not in self.notPassedNodeSet:
                 self.notPassedNodeDict[nextNodeInPathGraph] = valOfNextNode + valOfCurNode
             if valOfNextNode + valOfCurNode < self.notPassedNodeDict[nextNodeInPathGraph]:
                 _ = self.notPassedNodeDict.pop(nextNodeInPathGraph)
@@ -103,7 +118,7 @@ class Dijkstra:
         while dNode.prevNode:
             dNode = dNode.prevNode
             pathWitMinVal.append(dNode.node)
-        return pathWitMinVal[:2:-1]
+        return pathWitMinVal[:3:-1]
 
     def generateMinValEdgePath(self):
         dNode = self.destNodeGenerated
@@ -111,28 +126,52 @@ class Dijkstra:
         while dNode.prevNode:
             dNode = dNode.prevNode
             edgePathWithMinVal.append(dNode.edge)
-        return edgePathWithMinVal[-2:2:-1]
+        return edgePathWithMinVal[-2:3:-1]
 
 
 class AStar(Dijkstra):
 
-    def __init__(self, edgesGdf, uIdInEdges, origNode, destNode, estimationModel, localRequest, nodes):
+    def __init__(self, edgesGdf, uToV , origNode, destNode, estimationModel, localRequest, nodes):
         self.gValues = defaultdict(float)
         self.hValues = defaultdict(float)
         self.localRequest = localRequest
         self.nodes = nodes
-        super().__init__(edgesGdf, uIdInEdges, origNode, destNode, estimationModel)
+        super().__init__(edgesGdf,uToV , origNode, destNode, estimationModel)
 
 
-    def initializeDict(self, edgesGdfFromOrigNode):
-        for origEdgeIdInGdf in list(edgesGdfFromOrigNode.index):
-            nextNodeId = edgesGdfFromOrigNode.loc[origEdgeIdInGdf, 'v']
-            nextWindow = Window(self.dummyWindow.midSeg, self.dummyWindow.sucSeg, origEdgeIdInGdf)
-            nextNodeInPathGraph = NodeInPathGraph(nextWindow, nextNodeId, self.dummyOriNodeInPathGraph, origEdgeIdInGdf)
+    def initializeDict(self, listOfNodesFromOrig):
+        for _, edgeidAndV in enumerate(listOfNodesFromOrig):
+            edgeIdInGdf = edgeidAndV[0]
+            nextNodeId = edgeidAndV[1]
+            nextWindow = Window(self.dummyWindow.prevSeg, self.dummyWindow.midSeg, self.dummyWindow.sucSeg, edgeIdInGdf)
+            nextNodeInPathGraph = NodeInPathGraph(nextWindow, nextNodeId, self.dummyOriNodeInPathGraph, edgeIdInGdf)
             hValOfNextNode = self.calH(nextNodeInPathGraph)
             self.gValues[nextNodeInPathGraph] = 0
             self.hValues[nextNodeInPathGraph] = hValOfNextNode
             self.notPassedNodeDict[nextNodeInPathGraph] = hValOfNextNode
+        return
+
+    '''        
+        if isinstance(edgesGdfFromOrigNode, pd.DataFrame):
+            listOfV = list(edgesGdfFromOrigNode['v'])
+            listOfEdges = list(edgesGdfFromOrigNode['index'])
+        else:
+            listOfV = list([edgesGdfFromOrigNode['v']])
+            listOfEdges = list([edgesGdfFromOrigNode['index']])
+        print(listOfV, listOfEdges)
+        nextNodesList = []
+        for i, edgeIdInGdf in enumerate(listOfEdges):
+            nextNodeId = listOfV[i]
+            nextWindow = Window(self.dummyWindow.prevSeg, self.dummyWindow.midSeg, self.dummyWindow.sucSeg, edgeIdInGdf)
+            nextNodeInPathGraph = NodeInPathGraph(nextWindow, nextNodeId, self.dummyOriNodeInPathGraph, edgeIdInGdf)
+            hValOfNextNode = self.calH(nextNodeInPathGraph)
+            self.gValues[nextNodeInPathGraph] = 0
+            self.hValues[nextNodeInPathGraph] = hValOfNextNode
+            self.notPassedNodeDict[nextNodeInPathGraph] = hValOfNextNode
+        print(len(self.notPassedNodeDict))
+        return
+    '''
+
 
     def onePaceUpdate(self):
         #t0 = time.time()
@@ -150,7 +189,8 @@ class AStar(Dijkstra):
             self.destNodeGenerated = curNodeInPathGraph
             return
         #t6 = time.time()
-        nextNodeList = curNodeInPathGraph.generateNextNode(self.edgesGdf, self.uIdInEdges, self.destNode)
+
+        nextNodeList = curNodeInPathGraph.generateNextNode(self.uToV, self.destNode)
         #t4 = time.time()
         for nextNodeInPathGraph in nextNodeList:
             self.updateValOfNextNode(nextNodeInPathGraph, gValOfCurNode)
@@ -187,7 +227,7 @@ class AStar(Dijkstra):
         # kg/m^3
         r = 1.225
         # m/s
-        v = 5/3.6
+        v = 20/3.6
         curPoint = (self.nodes.loc[curNode.node, 'x'], self.nodes.loc[curNode.node, 'y'])
         #curPoint = (curLine['x'], curLine['x'])
         #print("point", curPoint)
