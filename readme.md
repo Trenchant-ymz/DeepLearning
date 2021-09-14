@@ -77,3 +77,6 @@ version 4.1: Add a function which plots the calculated routes into a **vector** 
 
 ### 2021/9/3
 version 5.0: Using a new routing algorithm(A*) which reduces the routing time from 3.3 hours to 1.5 hour 
+
+### 2021/9/13
+version 5.2: Using RBTree to store the value of nodes in the graph; Using dictionary to store the features of edges.

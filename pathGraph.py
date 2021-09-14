@@ -7,7 +7,7 @@ from math import inf
 
 
 class NodeInPathGraph:
-    def __init__(self, window, node, prevNode, edge, shortPathEst = inf):
+    def __init__(self, window, node, prevNode, edge, shortPathEst=inf):
         self.window = window
         self.node = node
         self.prevNode = prevNode
@@ -17,54 +17,29 @@ class NodeInPathGraph:
     def __eq__(self, other):
         return self.window == other.window
 
+    # this hack with additional ordering by key is needed to make it work with RBTree as TreeSet data structure
+    def __lt__(self, other):
+        if self.shortPathEst != other.shortPathEst:
+            return self.shortPathEst < other.shortPathEst
+        else:
+            return str(self.window) < str(other.window)
+
+    def __gt__(self, other):
+        if self.shortPathEst != other.shortPathEst:
+            return self.shortPathEst > other.shortPathEst
+        else:
+            return str(self.window) > str(other.window)
+
     def __hash__(self):
-        return hash(self.window.getTuple())
+        return hash(str(self.window)+str(self.node))
 
     def __str__(self):
-        return "window:"+str(self.window)+" node:"+str(self.node)
+        return str(self.window) + str(self.node)
+
+    def getStr(self):
+        return str(self.window.minusSeg) + ',' + str(self.window) + ',' + str(self.node)
 
     def valid(self):
         return self.window.valid()
 
-    def calVal(self, estimationModel, edgesGdf):
-        if self.window.midSeg == -1:
-            return 0
-        else:
-            numericalFeatures, categoricalFeatures = self.window.extractFeatures(edgesGdf)
-            return estimationModel.predict(numericalFeatures, categoricalFeatures)
 
-    def generateNextNode(self, uToV, destNode):
-        self.destNode = destNode
-        if self.__isNoSucNode():
-            return self.__dummySucNode()
-        else:
-            return self.__nextNodeFromEdge(uToV)
-
-    def __isNoSucNode(self):
-        return self.node == -1 or self.node == self.destNode
-
-    def __dummySucNode(self):
-        nextNodeId = -1
-        nextWindow = Window(self.window.prevSeg, self.window.midSeg, self.window.sucSeg, -1)
-        nextNodes = NodeInPathGraph(nextWindow, nextNodeId, self, -1)
-        return [nextNodes]
-
-    def __nextNodeFromEdge(self, uToV):
-        listOfNodes = uToV[self.node]
-        nextNodesList = []
-        for edgeIdAndV in listOfNodes:
-            edgeIdInGdf = edgeIdAndV[0]
-            nextNodeId = edgeIdAndV[1]
-
-            nextWindow = Window(self.window.prevSeg, self.window.midSeg, self.window.sucSeg, edgeIdInGdf)
-            if nextWindow.valid():
-                nextNodesList.append(NodeInPathGraph(nextWindow, nextNodeId, self, edgeIdInGdf))
-
-        return nextNodesList
-
-
-class NodeInAStarGraph(NodeInPathGraph):
-    def __init__(self, window, node, prevNode, edge, gVal = inf, hVal = inf ):
-        self.gVal = gVal
-        self.hVal = hVal
-        super().__init__(window, node, prevNode, edge,  self.gVal+self.hVal)

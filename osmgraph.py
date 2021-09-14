@@ -33,6 +33,12 @@ class OsmGraph:
         edges.apply(lambda x: self.__update(x), axis=1)
         return edges
 
+    def getEdgesDict(self):
+        _, edges = self.graphToGdfs()
+        self.uToV = defaultdict(list)
+        edges.apply(lambda x: self.__update(x), axis=1)
+        return edges.to_dict('index')
+
     def __update(self,x):
         self.uToV[x.u].append((x.name, x.v))
 
@@ -162,11 +168,11 @@ class OsmGraph:
         return fastestPath, shortestTime, fastestEdgePath
 
     def dijkstra(self):
-        routingModel = Dijkstra(self.getEdges(), self.uToV, self.origNode, self.destNode, self.estimationModel)
+        routingModel = Dijkstra(self.getEdgesDict(), self.uToV, self.origNode, self.destNode, self.estimationModel)
         return routingModel.routing()
 
     def aStar(self, localRequest):
-        routingModel = AStar(self.getEdges(), self.uToV, self.origNode, self.destNode, self.estimationModel,
+        routingModel = AStar(self.getEdgesDict(), self.uToV, self.origNode, self.destNode, self.estimationModel,
                              localRequest, self.getNodes())
         #print('initialized')
         return routingModel.routing()
@@ -184,6 +190,8 @@ class OsmGraph:
         return self.__calculateValue(path, "time")
 
     def __calculateValue(self, path, estimationType):
+        edgeDict = self.getEdgesDict()
+        pointList = []
         estimationModel = EstimationModel(estimationType)
         value = 0
         firstSeg = path[0]
@@ -197,10 +205,16 @@ class OsmGraph:
                 window.sucSeg = path[i+1]
             else:
                 window.sucSeg = -1
-
-            numericalFeatures, categoricalFeatures = window.extractFeatures(self.edgesGdf)
+            numericalFeatures, categoricalFeatures = window.extractFeatures(edgeDict)
+            #print(numericalFeatures, categoricalFeatures)
             addValue = estimationModel.predict(numericalFeatures, categoricalFeatures)
             value += addValue
+            pointList.append((str(window.minusSeg)+',' + str(window),numericalFeatures, categoricalFeatures, addValue, value))
+        f = estimationType+'.txt'
+        filename = open(f, 'w')
+        for p in pointList:
+            filename.write(str(p) + "\n")
+        filename.close()
         return value
 
     def __findSegId(self, path, i):

@@ -36,7 +36,6 @@ class LocationRequest:
 
 
 def main():
-    t0 = time.time()
     locationRequest = LocationRequest()
     osmGraphInBbox = extractGraphOf(locationRequest.boundingBox)
     nodes, edges = osmGraphInBbox.graphToGdfs()
@@ -44,8 +43,9 @@ def main():
     edges = edgePreprocessing(nodes, edges, locationRequest)
     graphWithElevation = GraphFromGdfs(nodes, edges)
     graphWithElevation.removeIsolateNodes()
-    t1 = time.time()
-    print('initialized, time used:', t1-t0, 's')
+    print(graphWithElevation.getEdges().loc[54197])
+    print(graphWithElevation.getEdgesDict()[54197])
+    testfunction(graphWithElevation.getEdgesDict())
     # shortest route
     shortestNodePath = findShortestPath(graphWithElevation, locationRequest)
     shortestPath = nodePathTOEdgePath(shortestNodePath, edges)
@@ -53,15 +53,17 @@ def main():
     # eco route
     ecoRoute, energyOnEcoRoute, ecoEdgePath = findEcoPathAndCalEnergy(graphWithElevation, locationRequest)
     calAndPrintPathAttributes(graphWithElevation, ecoEdgePath, "ecoRoute")
-    t2 = time.time()
-    print('time used for eco routing:', t2 - t1, 's')
     # fastest route
     #fastestPath, shortestTime, fastestEdgePath = findFastestPathAndCalTime(graphWithElevation, locationRequest)
     #calAndPrintPathAttributes(graphWithElevation, fastestEdgePath, "fastestPath")
     #graphWithElevation.plotPathList([shortestNodePath, ecoRoute, fastestPath],'routing result.pdf')
-    t3 = time.time()
-    print('time used for short time routing:', t3 - t2, 's')
 
+
+def testfunction(edgesGdf):
+    from window import Window
+    w = Window(61851, 61877, 61893, 33971)
+    print(w.extractFeatures(edgesGdf))
+    return
 
 def extractGraphOf(boundingBox):
     folderOfGraph = r'GraphDataInBbox'

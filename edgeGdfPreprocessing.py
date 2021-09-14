@@ -6,7 +6,7 @@ def edgePreprocessing(nodesGdf, edgesGdf, locationRequest):
     edgesGdf['odPair'] = edgesGdf.apply(lambda x: (x.u, x.v), axis=1)
     # mass
     edgesGdf['mass'] = locationRequest.mass
-    edgesGdf['mass'] = edgesGdf['mass'].apply(lambda x: (x- 23185.02515) / 8227.65140266416)
+    edgesGdf['mass'] = edgesGdf['mass'].apply(lambda x: (x- 23185.02515) / 8227.65140266416) #8227.65140266416
     # speed limit
     edgesGdf['speedLimit'] = edgesGdf.apply(lambda x: calSpeedlimit(x), axis=1)
     edgesGdf['speedLimit'] = (edgesGdf['speedLimit'] - 80.5318397987996) / 21.7071763681126
@@ -30,6 +30,7 @@ def edgePreprocessing(nodesGdf, edgesGdf, locationRequest):
     # direction angle
     edgesGdf['directionAngle'] = edgesGdf['points'].apply(lambda x: directionAngle(x))
     edgesGdf['directionAngle'] = (edgesGdf['directionAngle'] - 1.67006008669261) / 102.77763894989
+
 
     # road type
     edgesGdf['roadtype'] = edgesGdf.apply(lambda x: highway_cal(x), axis=1)
@@ -81,6 +82,8 @@ def directionAngle(pointsList):
     longitude_d, latitude_d = pointsList[-1]
     direction = [latitude_d - latitude_o, longitude_d - longitude_o]
     direction_array = np.array(direction)
+    if abs(np.linalg.norm(direction_array)) < 1e-16:
+        return 0
     cosangle = direction_array.dot(np.array([1, 0])) / (np.linalg.norm(direction_array))
     if np.cross(direction_array, np.array([1, 0])) < 0:
         direction_angle = math.acos(cosangle) * 180 / np.pi

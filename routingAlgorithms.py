@@ -11,43 +11,49 @@ import math
 import pandas as pd
 import heapq
 from bintrees import RBTree
+from math import inf
 
 class Dijkstra:
-    def __init__(self, edgesGdf, uToV , origNode, destNode, estimationModel):
-
+    def __init__(self, edgesDict, uToV , origNode, destNode, estimationModel):
+        self.pointList = []
         self.passedNodesSet = set()
-        #self.notPassedNodeSet = set()
-        #self.notPassedNodeHeapq = []
         self.notPassedNodeDict = dict()
-        self.edgesGdf = edgesGdf
-        #self.edgesGdf['index'] = self.edgesGdf.index
-        #self.edgesUsingIdAsIndex = self.edgesGdf.set_index(['u'])
+        #self.notPassedNodeHeapq = []
+        #self.notPassedNodeDict = dict()
+        self.edgesDict = edgesDict
         self.uToV = uToV
         self.dummyWindow = Window(-1, -1, -1, -1)
         self.origNode = origNode
         self.destNode = destNode
         self.estimationModel = estimationModel
-        self.dummyOriNodeInPathGraph = NodeInPathGraph(self.dummyWindow, self.origNode, None, -1)
-        self.dummyDestNodeInPathGraph = NodeInPathGraph(self.dummyWindow, -1, None, -1)
+        self.dummyOriNodeInPathGraph = self.generateDummyOirNode()
+        self.dummyDestNodeInPathGraph = self.generateDummyDestNode()
+        self.notPassedNodeQ = RBTree()
+        self.notPassedNodeQ.insert(self.dummyOriNodeInPathGraph, 0)
         listOfNodesFromOrig = self.uToV[self.origNode]
         print(listOfNodesFromOrig)
-        self.initializeDict(listOfNodesFromOrig)
+        self.initializeQ(listOfNodesFromOrig)
         if not len(listOfNodesFromOrig):
             print("not path from node:", self.origNode)
             self.__initializedStatus = False
         else:
             self.__initializedStatus = True
 
-    def initializeDict(self, listOfNodesFromOrig):
+    def generateDummyOirNode(self):
+        return NodeInPathGraph(self.dummyWindow, self.origNode, None, -1, 0)
+
+    def generateDummyDestNode(self):
+        return NodeInPathGraph(self.dummyWindow, -1, None, -1, inf)
+
+    def initializeQ(self, listOfNodesFromOrig):
         # print(edgesGdfFromNode.iloc[0])
         for edgeIdAndV in listOfNodesFromOrig:
             edgeIdInGdf = edgeIdAndV[0]
             nextNodeId = edgeIdAndV[1]
             nextWindow = Window(self.dummyWindow.prevSeg, self.dummyWindow.midSeg, self.dummyWindow.sucSeg, edgeIdInGdf)
-            nextNode = NodeInPathGraph(nextWindow, nextNodeId, self.dummyOriNodeInPathGraph, edgeIdInGdf)
+            nextNode = NodeInPathGraph(nextWindow, nextNodeId, self.dummyOriNodeInPathGraph, edgeIdInGdf, 0)
+            self.notPassedNodeQ.insert(nextNode, 0)
             self.notPassedNodeDict[nextNode] = 0
-            #heapq.heappush(self.notPassedNodeHeapq, (0, nextNode))
-
         return
 
     def routing(self):
@@ -60,6 +66,11 @@ class Dijkstra:
                 else:
                     steps += 1
                     self.onePaceUpdate()
+
+            filename = open('nodelist.txt', 'w')
+            for value in self.pointList:
+                filename.write(str(value)+"\n")
+            filename.close()
             pathWitMinVal = self.generateMinValNodePath()
             edgePathWithMinVal = self.generateMinValEdgePath()
             print("num of steps:", steps)
@@ -73,44 +84,70 @@ class Dijkstra:
         return self.dummyDestNodeInPathGraph in self.passedNodesSet
 
     def noNodeToExplore(self):
-        return len(self.notPassedNodeDict) == 0
+        return self.notPassedNodeQ.is_empty()
 
     def onePaceUpdate(self):
-        #t0 = time.time()
-        curNodeInPathGraph = self.findMinValNotPassedNode()
-        #t1 = time.time()
-        # print(str(curNodeInPathGraph))
-        valOfCurNode = self.notPassedNodeDict.pop(curNodeInPathGraph)
-        #valOfCurNode, curNodeInPathGraph = heapq.heappop(self.notPassedNodeHeapq)
-        #t2 = time.time()
+        curNodeInPathGraph, valOfCurNode = self.notPassedNodeQ.min_item()
+        self.notPassedNodeQ.remove(curNodeInPathGraph)
+        _ = self.notPassedNodeDict.pop(curNodeInPathGraph)
         self.passedNodesSet.add(curNodeInPathGraph)
-        #t3 = time.time()
         if self.isDestNode(curNodeInPathGraph):
             self.minVal = valOfCurNode
             self.destNodeGenerated = curNodeInPathGraph
             return
-        #t6 = time.time()
-        nextNodeList = curNodeInPathGraph.generateNextNode(self.uToV, self.destNode)
-        #t4 = time.time()
-        for nextNodeInPathGraph in nextNodeList:
-            self.updateValOfNextNode(nextNodeInPathGraph, valOfCurNode)
-        #t5 = time.time()
-        #print(t5-t0, t1-t0, t2-t1, t3-t2, t6-t3, t4-t6, t5-t4)
-
-    def findMinValNotPassedNode(self):
-        return min(self.notPassedNodeDict, key=self.notPassedNodeDict.get)
+        self.exploreNextNode(curNodeInPathGraph, valOfCurNode)
 
     def isDestNode(self, curNodeInPathGraph):
         return curNodeInPathGraph == self.dummyDestNodeInPathGraph
 
-    def updateValOfNextNode(self, nextNodeInPathGraph, valOfCurNode):
-        if nextNodeInPathGraph not in self.passedNodesSet:
-            valOfNextNode = nextNodeInPathGraph.calVal(self.estimationModel, self.edgesGdf)
-            if nextNodeInPathGraph not in self.notPassedNodeSet:
-                self.notPassedNodeDict[nextNodeInPathGraph] = valOfNextNode + valOfCurNode
-            if valOfNextNode + valOfCurNode < self.notPassedNodeDict[nextNodeInPathGraph]:
-                _ = self.notPassedNodeDict.pop(nextNodeInPathGraph)
-                self.notPassedNodeDict[nextNodeInPathGraph] = valOfNextNode + valOfCurNode
+    def exploreNextNode(self, curNodeInPathGraph, valOfCurNode):
+        if self.isNoSucNode(curNodeInPathGraph):
+            self.exploreDummySucNode(curNodeInPathGraph,valOfCurNode)
+        else:
+            self.exploreNextNodeFromEdge(curNodeInPathGraph, valOfCurNode)
+        return
+
+    def isNoSucNode(self, curNodeInPathGraph):
+        return curNodeInPathGraph.node == -1 or curNodeInPathGraph.node == self.destNode
+
+    def exploreDummySucNode(self, curNodeInPathGraph, valOfCurNode):
+        nextNodeId = -1
+        nextWindow = Window(curNodeInPathGraph.window.prevSeg, curNodeInPathGraph.window.midSeg, curNodeInPathGraph.window.sucSeg, -1)
+        nextNodes = NodeInPathGraph(nextWindow, nextNodeId, curNodeInPathGraph, -1)
+        valOfNextNode = self.calVal(nextNodes)
+        self.updateQ(nextNodes, valOfCurNode+valOfNextNode)
+        return
+
+    def exploreNextNodeFromEdge(self, curNodeInPathGraph, valOfCurNode):
+        listOfNodes = self.uToV[curNodeInPathGraph.node]
+        for edgeIdAndV in listOfNodes:
+            edgeIdInGdf = edgeIdAndV[0]
+            nextNodeId = edgeIdAndV[1]
+            nextWindow = Window(curNodeInPathGraph.window.prevSeg, curNodeInPathGraph.window.midSeg, curNodeInPathGraph.window.sucSeg, edgeIdInGdf)
+            nextNodeInPathGraph = NodeInPathGraph(nextWindow, nextNodeId, curNodeInPathGraph, edgeIdInGdf)
+            if nextWindow.valid() and nextNodeInPathGraph not in self.passedNodesSet:
+                valOfNextNode = self.calVal(nextNodeInPathGraph)
+                self.updateQ(nextNodeInPathGraph, valOfNextNode+valOfCurNode)
+
+    def updateQ(self, nextNodeInPathGraph, curShortPathEst):
+        if nextNodeInPathGraph not in self.notPassedNodeDict:
+            nextNodeInPathGraph.shortPathEst = curShortPathEst
+            self.notPassedNodeQ.insert(nextNodeInPathGraph, nextNodeInPathGraph.shortPathEst)
+            self.notPassedNodeDict[nextNodeInPathGraph] = curShortPathEst
+        else:
+            nextNodeInPathGraph.shortPathEst = self.notPassedNodeDict[nextNodeInPathGraph]
+            if curShortPathEst < nextNodeInPathGraph.shortPathEst:
+                self.notPassedNodeQ.remove(nextNodeInPathGraph)
+                nextNodeInPathGraph.shortPathEst = curShortPathEst
+                self.notPassedNodeQ.insert(nextNodeInPathGraph, nextNodeInPathGraph.shortPathEst)
+                self.notPassedNodeDict[nextNodeInPathGraph] = curShortPathEst
+
+    def calVal(self, curNodeInPathGraph):
+        if curNodeInPathGraph.window.midSeg == -1:
+            return 0
+        else:
+            numericalFeatures, categoricalFeatures = curNodeInPathGraph.window.extractFeatures(self.edgesDict)
+            return self.estimationModel.predict(numericalFeatures, categoricalFeatures)
 
     def generateMinValNodePath(self):
         dNode = self.destNodeGenerated
@@ -118,7 +155,7 @@ class Dijkstra:
         while dNode.prevNode:
             dNode = dNode.prevNode
             pathWitMinVal.append(dNode.node)
-        return pathWitMinVal[:3:-1]
+        return pathWitMinVal[:2:-1]
 
     def generateMinValEdgePath(self):
         dNode = self.destNodeGenerated
@@ -126,97 +163,95 @@ class Dijkstra:
         while dNode.prevNode:
             dNode = dNode.prevNode
             edgePathWithMinVal.append(dNode.edge)
-        return edgePathWithMinVal[-2:3:-1]
+        return edgePathWithMinVal[-2:2:-1]
 
 
 class AStar(Dijkstra):
 
-    def __init__(self, edgesGdf, uToV , origNode, destNode, estimationModel, localRequest, nodes):
-        self.gValues = defaultdict(float)
+    def __init__(self, edgesDict, uToV , origNode, destNode, estimationModel, localRequest, nodes):
         self.hValues = defaultdict(float)
+        self.pointList = []
         self.localRequest = localRequest
         self.nodes = nodes
-        super().__init__(edgesGdf,uToV , origNode, destNode, estimationModel)
+        super().__init__(edgesDict,uToV , origNode, destNode, estimationModel)
+        self.hValues[self.dummyOriNodeInPathGraph] = 0
+        self.notPassedNodeDict[self.dummyOriNodeInPathGraph] = 0
+        #print(self.notPassedNodeQ)
 
 
-    def initializeDict(self, listOfNodesFromOrig):
-        for _, edgeidAndV in enumerate(listOfNodesFromOrig):
-            edgeIdInGdf = edgeidAndV[0]
-            nextNodeId = edgeidAndV[1]
+    def initializeQ(self, listOfNodesFromOrig):
+        # print(edgesDict.iloc[0])
+        for edgeIdAndV in listOfNodesFromOrig:
+            edgeIdInGdf = edgeIdAndV[0]
+            nextNodeId = edgeIdAndV[1]
             nextWindow = Window(self.dummyWindow.prevSeg, self.dummyWindow.midSeg, self.dummyWindow.sucSeg, edgeIdInGdf)
-            nextNodeInPathGraph = NodeInPathGraph(nextWindow, nextNodeId, self.dummyOriNodeInPathGraph, edgeIdInGdf)
-            hValOfNextNode = self.calH(nextNodeInPathGraph)
-            self.gValues[nextNodeInPathGraph] = 0
+            hValOfNextNode = self.calH(nextNodeId)
+            nextNodeInPathGraph = NodeInPathGraph(nextWindow, nextNodeId, self.dummyOriNodeInPathGraph, edgeIdInGdf,hValOfNextNode)
+            self.notPassedNodeQ.insert(nextNodeInPathGraph, 0)
             self.hValues[nextNodeInPathGraph] = hValOfNextNode
+            #print(edgeIdAndV, self.hValues)
             self.notPassedNodeDict[nextNodeInPathGraph] = hValOfNextNode
+        #print(self.notPassedNodeQ)
+        #print(self.hValues)
+        #print(self.notPassedNodeDict)
         return
-
-    '''        
-        if isinstance(edgesGdfFromOrigNode, pd.DataFrame):
-            listOfV = list(edgesGdfFromOrigNode['v'])
-            listOfEdges = list(edgesGdfFromOrigNode['index'])
-        else:
-            listOfV = list([edgesGdfFromOrigNode['v']])
-            listOfEdges = list([edgesGdfFromOrigNode['index']])
-        print(listOfV, listOfEdges)
-        nextNodesList = []
-        for i, edgeIdInGdf in enumerate(listOfEdges):
-            nextNodeId = listOfV[i]
-            nextWindow = Window(self.dummyWindow.prevSeg, self.dummyWindow.midSeg, self.dummyWindow.sucSeg, edgeIdInGdf)
-            nextNodeInPathGraph = NodeInPathGraph(nextWindow, nextNodeId, self.dummyOriNodeInPathGraph, edgeIdInGdf)
-            hValOfNextNode = self.calH(nextNodeInPathGraph)
-            self.gValues[nextNodeInPathGraph] = 0
-            self.hValues[nextNodeInPathGraph] = hValOfNextNode
-            self.notPassedNodeDict[nextNodeInPathGraph] = hValOfNextNode
-        print(len(self.notPassedNodeDict))
-        return
-    '''
 
 
     def onePaceUpdate(self):
-        #t0 = time.time()
-        curNodeInPathGraph = self.findMinValNotPassedNode()
-        #t1 = time.time()
-        # print(str(curNodeInPathGraph))
-        valOfCurNode = self.notPassedNodeDict.pop(curNodeInPathGraph)
-        gValOfCurNode = self.gValues.pop(curNodeInPathGraph)
-        _ = self.hValues.pop(curNodeInPathGraph)
-        #t2 = time.time()
+        curNodeInPathGraph, valOfCurNode = self.notPassedNodeQ.min_item()
+        #print(curNodeInPathGraph, valOfCurNode)
+        #self.pointList.append((curNodeInPathGraph.getStr(), valOfCurNode))
+        hvalue = self.hValues[curNodeInPathGraph]
+        if curNodeInPathGraph not in self.hValues:
+            print(curNodeInPathGraph)
+        self.notPassedNodeQ.remove(curNodeInPathGraph)
+        _ = self.notPassedNodeDict.pop(curNodeInPathGraph)
         self.passedNodesSet.add(curNodeInPathGraph)
-        #t3 = time.time()
         if self.isDestNode(curNodeInPathGraph):
-            self.minVal = gValOfCurNode
+            self.minVal = valOfCurNode - hvalue
             self.destNodeGenerated = curNodeInPathGraph
             return
-        #t6 = time.time()
+        self.exploreNextNode(curNodeInPathGraph,valOfCurNode)
 
-        nextNodeList = curNodeInPathGraph.generateNextNode(self.uToV, self.destNode)
-        #t4 = time.time()
-        for nextNodeInPathGraph in nextNodeList:
-            self.updateValOfNextNode(nextNodeInPathGraph, gValOfCurNode)
-        #t5 = time.time()
-        #print(t5-t0, t1-t0, t2-t1, t3-t2, t6-t3, t4-t6, t5-t4)
 
-    def updateValOfNextNode(self, nextNodeInPathGraph, gValOfCurNode):
-        if nextNodeInPathGraph not in self.passedNodesSet:
-            gValOfNextNode = gValOfCurNode + nextNodeInPathGraph.calVal(self.estimationModel, self.edgesGdf)
-            if nextNodeInPathGraph not in self.notPassedNodeDict:
-                hValOfNextNode = self.calH(nextNodeInPathGraph)
-                self.notPassedNodeDict[nextNodeInPathGraph] = gValOfNextNode + hValOfNextNode
-                self.gValues[nextNodeInPathGraph] = gValOfNextNode
-                self.hValues[nextNodeInPathGraph] = hValOfNextNode
-            else:
-                gValBefore = self.gValues.get(nextNodeInPathGraph)
-                if gValOfNextNode < gValBefore:
-                    hValOfNextNode = self.hValues.get(nextNodeInPathGraph)
-                    _ = self.notPassedNodeDict.pop(nextNodeInPathGraph)
-                    _ = self.gValues.pop(nextNodeInPathGraph)
-                    self.notPassedNodeDict[nextNodeInPathGraph] = gValOfNextNode + hValOfNextNode
-                    self.gValues[nextNodeInPathGraph] = gValOfNextNode
-                    #self.hValues[nextNodeInPathGraph] = hValOfNextNode
+    def exploreNextNodeFromEdge(self, curNodeInPathGraph,valOfCurNode):
+        hValOfCurNode = self.hValues[curNodeInPathGraph]
+        #print("curbest", valOfCurNode, hValOfCurNode)
+        listOfNodes = self.uToV[curNodeInPathGraph.node]
+        for edgeIdAndV in listOfNodes:
+            edgeIdInGdf = edgeIdAndV[0]
+            nextNodeId = edgeIdAndV[1]
+            nextWindow = Window(curNodeInPathGraph.window.prevSeg, curNodeInPathGraph.window.midSeg, curNodeInPathGraph.window.sucSeg, edgeIdInGdf)
+            nextNodeInPathGraph = NodeInPathGraph(nextWindow, nextNodeId, curNodeInPathGraph, edgeIdInGdf)
+            if nextWindow.valid() and nextNodeInPathGraph not in self.passedNodesSet:
+                if nextNodeInPathGraph in self.hValues:
+                    hValOfNextNode = self.hValues[nextNodeInPathGraph]
+                else:
+                    hValOfNextNode = self.calH(nextNodeId)
+                    self.hValues[nextNodeInPathGraph] = hValOfNextNode
+                valOfNextNode = self.calVal(nextNodeInPathGraph)
+                self.pointList.append((nextNodeInPathGraph.getStr(), valOfNextNode, valOfCurNode, hValOfCurNode))
+                self.updateQInAStar(nextNodeInPathGraph, valOfNextNode+valOfCurNode-hValOfCurNode, hValOfNextNode)
 
-    def calH(self, curNode):
-        if curNode.node == -1:
+
+    def updateQInAStar(self, nextNodeInPathGraph, curGValEst, hValOfNextNode):
+        curFVal = curGValEst + hValOfNextNode
+        #print('explored', curFVal)
+        if nextNodeInPathGraph not in self.notPassedNodeDict:
+            nextNodeInPathGraph.shortPathEst = curFVal
+            self.notPassedNodeQ.insert(nextNodeInPathGraph, curFVal)
+            self.notPassedNodeDict[nextNodeInPathGraph] = curFVal
+        else:
+            nextNodeInPathGraph.shortPathEst = self.notPassedNodeDict[nextNodeInPathGraph]
+            if curFVal < nextNodeInPathGraph.shortPathEst:
+                self.notPassedNodeQ.remove(nextNodeInPathGraph)
+                nextNodeInPathGraph.shortPathEst = curFVal
+                self.notPassedNodeQ.insert(nextNodeInPathGraph, curFVal)
+                self.notPassedNodeDict[nextNodeInPathGraph] = curFVal
+
+
+    def calH(self, node):
+        if node == -1:
             return 0
         crr = 0.0067
         # m/s^2
@@ -228,7 +263,7 @@ class AStar(Dijkstra):
         r = 1.225
         # m/s
         v = 20/3.6
-        curPoint = (self.nodes.loc[curNode.node, 'x'], self.nodes.loc[curNode.node, 'y'])
+        curPoint = (self.nodes.loc[node, 'x'], self.nodes.loc[node, 'y'])
         #curPoint = (curLine['x'], curLine['x'])
         #print("point", curPoint)
         dis, _ = self.pos2dist(curPoint, self.localRequest.destination.xy())

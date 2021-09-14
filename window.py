@@ -14,42 +14,40 @@ class Window:
                and self.midSeg == other.midSeg and self.sucSeg == other.sucSeg
 
     def __str__(self):
-        return "[" + str(self.prevSeg) + "," + str(self.midSeg) + "," + str(self.sucSeg) + "]"
+        return str(self.prevSeg)+',' + str(self.midSeg) +',' + str(self.sucSeg)
 
-    def getTuple(self):
-        return str(self.prevSeg) + str(self.midSeg) + str(self.sucSeg)
 
     def valid(self):
         return self.prevSeg != self.sucSeg
 
-    def extractFeatures(self, edgesGdf):
-        prevSegNumFeature, prevSegCatFeature = edgeFeature(self.prevSeg, edgesGdf, self.minusSeg)
-        midSegNumFeature, midSegCatFeature = edgeFeature(self.midSeg, edgesGdf, self.prevSeg)
-        sucSegNumFeature, sucSegCatFeature = edgeFeature(self.sucSeg, edgesGdf, self.midSeg)
+    def extractFeatures(self, edgesDict):
+        prevSegNumFeature, prevSegCatFeature = edgeFeature(self.prevSeg, edgesDict, self.minusSeg)
+        midSegNumFeature, midSegCatFeature = edgeFeature(self.midSeg, edgesDict, self.prevSeg)
+        sucSegNumFeature, sucSegCatFeature = edgeFeature(self.sucSeg, edgesDict, self.midSeg)
         numericalFeatures = [prevSegNumFeature, midSegNumFeature, sucSegNumFeature]
         categoricalFeatures = [prevSegCatFeature, midSegCatFeature, sucSegCatFeature]
         return numericalFeatures, categoricalFeatures
 
 
-def edgeFeature(segmentIDInGdf, edgesGdf, prevEdgeId):
+def edgeFeature(segmentIDInGdf, edgesDict, prevEdgeId):
     if segmentIDInGdf == -1:
         return [0] * 6, [0] * 7
-    curEdge = edgesGdf.loc[segmentIDInGdf]
-    catFeature = curEdge.categoricalFeature
-    previousOrientation = calPrevOrientation(edgesGdf, curEdge, prevEdgeId)
-    numFeature = [curEdge.speedLimit, curEdge.mass, curEdge.elevationChange, previousOrientation,
-                  curEdge.lengthNormalized, curEdge.directionAngle]
+    curEdge = edgesDict[segmentIDInGdf]
+    catFeature = curEdge['categoricalFeature']
+    previousOrientation = calPrevOrientation(edgesDict, curEdge, prevEdgeId)
+    numFeature = [curEdge['speedLimit'], curEdge['mass'], curEdge['elevationChange'], previousOrientation,
+                  curEdge['lengthNormalized'], curEdge['directionAngle']]
     return numFeature, catFeature
 
 
-def calPrevOrientation(edgesGdf, curEdge, prevEdgeId):
+def calPrevOrientation(edgesDict, curEdge, prevEdgeId):
     if prevEdgeId is None or prevEdgeId == -1:
         orientation = 0
     else:
-        prevEdge = edgesGdf.loc[prevEdgeId]
-        a = prevEdge.points[-2]
-        b = curEdge.points[0]
-        c = curEdge.points[1]
+        prevEdge = edgesDict[prevEdgeId]
+        a = prevEdge['points'][-2]
+        b = curEdge['points'][0]
+        c = curEdge['points'][1]
         orientation = ori_cal(a, b, c)
     orientation = (orientation + 1.46016587027665) / 33.3524612794841
     return orientation
