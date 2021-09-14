@@ -164,7 +164,7 @@ class OsmGraph:
     def fastestPath(self, localRequest):
         self.origNode, self.destNode = self.getODNodesFromODPair(localRequest.odPair)
         self.estimationModel = EstimationModel("time")
-        fastestPath, shortestTime, fastestEdgePath = self.aStar(localRequest)
+        fastestPath, shortestTime, fastestEdgePath = self.dijkstra(localRequest)
         return fastestPath, shortestTime, fastestEdgePath
 
     def dijkstra(self):

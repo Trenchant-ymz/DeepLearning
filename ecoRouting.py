@@ -54,9 +54,9 @@ def main():
     ecoRoute, energyOnEcoRoute, ecoEdgePath = findEcoPathAndCalEnergy(graphWithElevation, locationRequest)
     calAndPrintPathAttributes(graphWithElevation, ecoEdgePath, "ecoRoute")
     # fastest route
-    #fastestPath, shortestTime, fastestEdgePath = findFastestPathAndCalTime(graphWithElevation, locationRequest)
-    #calAndPrintPathAttributes(graphWithElevation, fastestEdgePath, "fastestPath")
-    #graphWithElevation.plotPathList([shortestNodePath, ecoRoute, fastestPath],'routing result.pdf')
+    fastestPath, shortestTime, fastestEdgePath = findFastestPathAndCalTime(graphWithElevation, locationRequest)
+    calAndPrintPathAttributes(graphWithElevation, fastestEdgePath, "fastestPath")
+    graphWithElevation.plotPathList([shortestNodePath, ecoRoute, fastestPath],'routing result.pdf')
 
 
 def testfunction(edgesGdf):

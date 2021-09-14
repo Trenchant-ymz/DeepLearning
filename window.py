@@ -53,6 +53,27 @@ def calPrevOrientation(edgesDict, curEdge, prevEdgeId):
     return orientation
 
 
+def Beforeori_cal(coor_a, coor_b, coor_c):
+    """
+    Calcuate the orientation change from vector ab to bc (0 in default, right turn > 0, left turn < 0)
+
+    10 degree is the threshold of a turn.
+
+    Args:
+        coor_a: coordinate of point a
+        coor_b: coordinate of point b
+        coor_c: coordinate of point c
+
+    """
+    a = np.array(coor_a)
+    b = np.array(coor_b)
+    c = np.array(coor_c)
+    v_ab = b - a
+    v_bc = c - b
+    cosangle = v_ab.dot(v_bc) / (np.linalg.norm(v_bc) * np.linalg.norm(v_ab) + 1e-16)
+    res = math.acos(cosangle) * 180 / np.pi if np.cross(v_ab, v_bc) < 0 else -math.acos(cosangle) * 180 / np.pi
+    return res if not math.isnan(res) else 0
+
 def ori_cal(coor_a, coor_b, coor_c):
     """
     Calcuate the orientation change from vector ab to bc (0 in default, right turn > 0, left turn < 0)
@@ -65,15 +86,17 @@ def ori_cal(coor_a, coor_b, coor_c):
         coor_c: coordinate of point c
 
     Returns:
-        's': straight
-        'l': left-hand turn
-        'r': right-hand turn
     """
-    a = np.array(coor_a)
-    b = np.array(coor_b)
-    c = np.array(coor_c)
-    v_ab = b - a
-    v_bc = c - b
-    cosangle = v_ab.dot(v_bc) / (np.linalg.norm(v_bc) * np.linalg.norm(v_ab) + 1e-16)
-    res = math.acos(cosangle) * 180 / np.pi if np.cross(v_ab, v_bc) < 0 else -math.acos(cosangle) * 180 / np.pi
+    x_a, y_a = coor_a
+    x_b, y_b = coor_b
+    x_c, y_c = coor_c
+    v_ab_x = x_b - x_a
+    v_ab_y = y_b - y_a
+    v_bc_x = x_c - x_b
+    v_bc_y = y_c - y_b
+    v_bc_norm = math.sqrt(v_bc_x**2 + v_bc_y**2)
+    v_ab_norm = math.sqrt(v_ab_x ** 2 + v_ab_y ** 2)
+    cosangle = (v_ab_x*v_bc_x + v_ab_y*v_bc_y) / (v_bc_norm * v_ab_norm + 1e-16)
+    cross = v_ab_x*v_bc_y - v_ab_y*v_bc_x
+    res = math.acos(cosangle) * 180 / np.pi if cross < 0 else -math.acos(cosangle) * 180 / np.pi
     return res if not math.isnan(res) else 0

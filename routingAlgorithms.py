@@ -15,7 +15,7 @@ from math import inf
 
 class Dijkstra:
     def __init__(self, edgesDict, uToV , origNode, destNode, estimationModel):
-        self.pointList = []
+        #self.pointList = []
         self.passedNodesSet = set()
         self.notPassedNodeDict = dict()
         #self.notPassedNodeHeapq = []
@@ -67,10 +67,6 @@ class Dijkstra:
                     steps += 1
                     self.onePaceUpdate()
 
-            filename = open('nodelist.txt', 'w')
-            for value in self.pointList:
-                filename.write(str(value)+"\n")
-            filename.close()
             pathWitMinVal = self.generateMinValNodePath()
             edgePathWithMinVal = self.generateMinValEdgePath()
             print("num of steps:", steps)
@@ -170,7 +166,7 @@ class AStar(Dijkstra):
 
     def __init__(self, edgesDict, uToV , origNode, destNode, estimationModel, localRequest, nodes):
         self.hValues = defaultdict(float)
-        self.pointList = []
+        #self.pointList = []
         self.localRequest = localRequest
         self.nodes = nodes
         super().__init__(edgesDict,uToV , origNode, destNode, estimationModel)
@@ -230,7 +226,7 @@ class AStar(Dijkstra):
                     hValOfNextNode = self.calH(nextNodeId)
                     self.hValues[nextNodeInPathGraph] = hValOfNextNode
                 valOfNextNode = self.calVal(nextNodeInPathGraph)
-                self.pointList.append((nextNodeInPathGraph.getStr(), valOfNextNode, valOfCurNode, hValOfCurNode))
+                #self.pointList.append((nextNodeInPathGraph.getStr(), valOfNextNode, valOfCurNode, hValOfCurNode))
                 self.updateQInAStar(nextNodeInPathGraph, valOfNextNode+valOfCurNode-hValOfCurNode, hValOfNextNode)
 
 

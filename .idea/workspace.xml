@@ -4,33 +4,12 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="66e55b93-4013-418c-b118-b87d9b6682ff" name="Default Changelist" comment="Version 5.0">
-      <change afterPath="$PROJECT_DIR$/Untitled-1.ipynb" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/best_13d_fuelSimulateData.mdl" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/foo.pstats" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/foo.stats" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/pretrained models/best_13d_fuelSimulateData.mdl" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/pretrained models/best_13d_timeSimulateData.mdl" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/profile.pstats" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/profile.stats" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/profileDropped.pstats" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/profileSep11.pstats" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/temp.dat" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test.profile" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test1.out" afterDir="false" />
+    <list default="true" id="66e55b93-4013-418c-b118-b87d9b6682ff" name="Default Changelist" comment="Version 5.2">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/dataPreprocessing.py" beforeDir="false" afterPath="$PROJECT_DIR$/dataPreprocessing.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/eco route.pdf" beforeDir="false" afterPath="$PROJECT_DIR$/eco route.pdf" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/eco routing.py" beforeDir="false" afterPath="$PROJECT_DIR$/ecoRouting.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/fastest route.pdf" beforeDir="false" afterPath="$PROJECT_DIR$/fastest route.pdf" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nets.py" beforeDir="false" afterPath="$PROJECT_DIR$/nets.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/obddata.py" beforeDir="false" afterPath="$PROJECT_DIR$/obddata.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ecoRouting.py" beforeDir="false" afterPath="$PROJECT_DIR$/ecoRouting.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodelist.txt" beforeDir="false" afterPath="$PROJECT_DIR$/nodelist.txt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/osmgraph.py" beforeDir="false" afterPath="$PROJECT_DIR$/osmgraph.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pathGraph.py" beforeDir="false" afterPath="$PROJECT_DIR$/pathGraph.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/prediction_result.csv" beforeDir="false" afterPath="$PROJECT_DIR$/prediction_result.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/routingAlgorithms.py" beforeDir="false" afterPath="$PROJECT_DIR$/routingAlgorithms.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/shortest route.pdf" beforeDir="false" afterPath="$PROJECT_DIR$/shortest route.pdf" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/training and testing.py" beforeDir="false" afterPath="$PROJECT_DIR$/training and testing.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/profileSep13.pstats" beforeDir="false" afterPath="$PROJECT_DIR$/profileSep13.pstats" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/window.py" beforeDir="false" afterPath="$PROJECT_DIR$/window.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -87,27 +66,6 @@
     </key>
   </component>
   <component name="RunManager" selected="Python.ecoRouting (1)">
-    <configuration name="dataPreprocessing" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="DeepLearning" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/dataPreprocessing.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
     <configuration name="ecoRouting (1)" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="DeepLearning" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -192,6 +150,27 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
+    <configuration name="routingAlgorithms" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="DeepLearning" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/routingAlgorithms.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
     <configuration name="training and testing" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="DeepLearning" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -216,10 +195,10 @@
     <recent_temporary>
       <list>
         <item itemvalue="Python.ecoRouting (1)" />
+        <item itemvalue="Python.routingAlgorithms" />
         <item itemvalue="Python.hw01" />
         <item itemvalue="Python.ecoRouting" />
         <item itemvalue="Python.training and testing" />
-        <item itemvalue="Python.dataPreprocessing" />
       </list>
     </recent_temporary>
   </component>
@@ -231,41 +210,6 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1616853852624</updated>
-    </task>
-    <task id="LOCAL-00003" summary="zlfxsd">
-      <created>1617095790812</created>
-      <option name="number" value="00003" />
-      <option name="presentableId" value="LOCAL-00003" />
-      <option name="project" value="LOCAL" />
-      <updated>1617095790812</updated>
-    </task>
-    <task id="LOCAL-00004" summary="new">
-      <created>1617101453779</created>
-      <option name="number" value="00004" />
-      <option name="presentableId" value="LOCAL-00004" />
-      <option name="project" value="LOCAL" />
-      <updated>1617101453779</updated>
-    </task>
-    <task id="LOCAL-00005" summary="Workable Version">
-      <created>1617778462664</created>
-      <option name="number" value="00005" />
-      <option name="presentableId" value="LOCAL-00005" />
-      <option name="project" value="LOCAL" />
-      <updated>1617778462664</updated>
-    </task>
-    <task id="LOCAL-00006" summary="train/test/validation data">
-      <created>1617778588571</created>
-      <option name="number" value="00006" />
-      <option name="presentableId" value="LOCAL-00006" />
-      <option name="project" value="LOCAL" />
-      <updated>1617778588571</updated>
-    </task>
-    <task id="LOCAL-00007" summary="new">
-      <created>1617778985431</created>
-      <option name="number" value="00007" />
-      <option name="presentableId" value="LOCAL-00007" />
-      <option name="project" value="LOCAL" />
-      <updated>1617778985431</updated>
     </task>
     <task id="LOCAL-00008" summary="model data readme and a trained deep learning framework">
       <created>1617779137610</created>
@@ -575,7 +519,42 @@
       <option name="project" value="LOCAL" />
       <updated>1630686270989</updated>
     </task>
-    <option name="localTasksCounter" value="52" />
+    <task id="LOCAL-00052" summary="Version 5.1">
+      <created>1631465201888</created>
+      <option name="number" value="00052" />
+      <option name="presentableId" value="LOCAL-00052" />
+      <option name="project" value="LOCAL" />
+      <updated>1631465201888</updated>
+    </task>
+    <task id="LOCAL-00053" summary="Version 5.1">
+      <created>1631465232523</created>
+      <option name="number" value="00053" />
+      <option name="presentableId" value="LOCAL-00053" />
+      <option name="project" value="LOCAL" />
+      <updated>1631465232523</updated>
+    </task>
+    <task id="LOCAL-00054" summary="Version 5.2">
+      <created>1631592039399</created>
+      <option name="number" value="00054" />
+      <option name="presentableId" value="LOCAL-00054" />
+      <option name="project" value="LOCAL" />
+      <updated>1631592039399</updated>
+    </task>
+    <task id="LOCAL-00055" summary="Version 5.2">
+      <created>1631592133005</created>
+      <option name="number" value="00055" />
+      <option name="presentableId" value="LOCAL-00055" />
+      <option name="project" value="LOCAL" />
+      <updated>1631592133005</updated>
+    </task>
+    <task id="LOCAL-00056" summary="Version 5.2">
+      <created>1631593492663</created>
+      <option name="number" value="00056" />
+      <option name="presentableId" value="LOCAL-00056" />
+      <option name="project" value="LOCAL" />
+      <updated>1631593492663</updated>
+    </task>
+    <option name="localTasksCounter" value="57" />
     <servers />
   </component>
   <component name="Vcs.Log.History.Properties">
@@ -619,6 +598,8 @@
     <MESSAGE value="Version 4.0" />
     <MESSAGE value="Version 4.1" />
     <MESSAGE value="Version 5.0" />
-    <option name="LAST_COMMIT_MESSAGE" value="Version 5.0" />
+    <MESSAGE value="Version 5.1" />
+    <MESSAGE value="Version 5.2" />
+    <option name="LAST_COMMIT_MESSAGE" value="Version 5.2" />
   </component>
 </project>
