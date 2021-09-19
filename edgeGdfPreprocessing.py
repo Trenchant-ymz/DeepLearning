@@ -2,11 +2,11 @@ import numpy as np
 import pandas as pd
 import math
 
-def edgePreprocessing(nodesGdf, edgesGdf, locationRequest):
+def edgePreprocessing(nodesGdf, edgesGdf,temperature, mass,dayOfTheWeek, timeOfTheDay):
     edgesGdf['odPair'] = edgesGdf.apply(lambda x: (x.u, x.v), axis=1)
     # mass
-    edgesGdf['mass'] = locationRequest.mass
-    edgesGdf['mass'] = edgesGdf['mass'].apply(lambda x: (x- 23185.02515) / 8227.65140266416) #8227.65140266416
+    edgesGdf['mass'] = mass
+    edgesGdf['mass'] = edgesGdf['mass'].apply(lambda x: (x - 23185.02515) / 8227.65140266416) #8227.65140266416
     # speed limit
     edgesGdf['speedLimit'] = edgesGdf.apply(lambda x: calSpeedlimit(x), axis=1)
     edgesGdf['speedLimit'] = (edgesGdf['speedLimit'] - 80.5318397987996) / 21.7071763681126
@@ -39,9 +39,9 @@ def edgePreprocessing(nodesGdf, edgesGdf, locationRequest):
     roadtypeSet = {0, 1, 2, 3, 4, 8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 19, 20, 21}
     edgesGdf['roadtype'] = edgesGdf['roadtype'].apply(lambda x: x if x in roadtypeSet else 0)
     # time
-    edgesGdf['timeOfTheDay'] = locationRequest.timeOfTheDay
-    edgesGdf['timeOfTheDay'] = edgesGdf['timeOfTheDay'].apply(lambda x: calTimeStage(x))
-    edgesGdf['dayOfTheWeek'] = locationRequest.dayOfTheWeek
+    edgesGdf['timeOfTheDay'] = timeOfTheDay
+    #edgesGdf['timeOfTheDay'] = edgesGdf['timeOfTheDay'].apply(lambda x: calTimeStage(x))
+    edgesGdf['dayOfTheWeek'] = dayOfTheWeek
 
     # lanes
     edgesGdf['lanes'] = edgesGdf.apply(lambda x: cal_lanes(x), axis=1)
@@ -138,8 +138,7 @@ def calSpeedlimit(array_like):
             speed = int(res) * 1.609
             return speed
 
-def calTimeStage(timeOfTheDay):
-    return timeOfTheDay // 4 + 1
+
 
 
 def cal_lanes(array_like):

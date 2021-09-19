@@ -5,11 +5,29 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="66e55b93-4013-418c-b118-b87d9b6682ff" name="Default Changelist" comment="Version 5.2">
+      <change afterPath="$PROJECT_DIR$/Sep17GenerateWindows.pstats" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/a.pkl" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/ecoRoutingSep14.pstats" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/lookUpTable.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/lookUpTableForfuel.pkl" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/multiTaskPINN.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/profileSep14.pstats" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/results/resultnewdropped.html" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/tableGenerateSep19.pstats" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/tableSep18.pstats" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/tableSep19.pstats" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/windowIdDict.pkl" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/windowList.txt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/ecoRouting.py" beforeDir="false" afterPath="$PROJECT_DIR$/ecoRouting.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodelist.txt" beforeDir="false" afterPath="$PROJECT_DIR$/nodelist.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/edgeGdfPreprocessing.py" beforeDir="false" afterPath="$PROJECT_DIR$/edgeGdfPreprocessing.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/fuel.txt" beforeDir="false" afterPath="$PROJECT_DIR$/fuel.txt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/osmgraph.py" beforeDir="false" afterPath="$PROJECT_DIR$/osmgraph.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/profileSep13.pstats" beforeDir="false" afterPath="$PROJECT_DIR$/profileSep13.pstats" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/routing result.pdf" beforeDir="false" afterPath="$PROJECT_DIR$/routing result.pdf" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/routingAlgorithms.py" beforeDir="false" afterPath="$PROJECT_DIR$/routingAlgorithms.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/test.ipynb" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/time.txt" beforeDir="false" afterPath="$PROJECT_DIR$/time.txt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/window.py" beforeDir="false" afterPath="$PROJECT_DIR$/window.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -210,13 +228,6 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1616853852624</updated>
-    </task>
-    <task id="LOCAL-00008" summary="model data readme and a trained deep learning framework">
-      <created>1617779137610</created>
-      <option name="number" value="00008" />
-      <option name="presentableId" value="LOCAL-00008" />
-      <option name="project" value="LOCAL" />
-      <updated>1617779137610</updated>
     </task>
     <task id="LOCAL-00009" summary="workable version in Google Colab">
       <created>1617850902334</created>
@@ -554,7 +565,14 @@
       <option name="project" value="LOCAL" />
       <updated>1631593492663</updated>
     </task>
-    <option name="localTasksCounter" value="57" />
+    <task id="LOCAL-00057" summary="Version 5.2">
+      <created>1631595543498</created>
+      <option name="number" value="00057" />
+      <option name="presentableId" value="LOCAL-00057" />
+      <option name="project" value="LOCAL" />
+      <updated>1631595543498</updated>
+    </task>
+    <option name="localTasksCounter" value="58" />
     <servers />
   </component>
   <component name="Vcs.Log.History.Properties">

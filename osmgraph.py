@@ -3,7 +3,7 @@ import osmnx as ox
 import os
 from edgeGdfPreprocessing import edgePreprocessing
 from estimationModel import EstimationModel
-from window import Window
+from window import Window, WindowFromList
 from pathGraph import NodeInPathGraph
 import time
 from collections import defaultdict
@@ -11,7 +11,7 @@ from routingAlgorithms import Dijkstra, AStar
 import plotly.graph_objects as go
 import numpy as np
 import plotly
-
+import copy
 
 class OsmGraph:
 
@@ -29,15 +29,17 @@ class OsmGraph:
 
     def getEdges(self):
         _, edges = self.graphToGdfs()
-        self.uToV = defaultdict(list)
-        edges.apply(lambda x: self.__update(x), axis=1)
         return edges
 
     def getEdgesDict(self):
         _, edges = self.graphToGdfs()
+        return edges.to_dict('index')
+
+    def getUToV(self):
+        _, edges = self.graphToGdfs()
         self.uToV = defaultdict(list)
         edges.apply(lambda x: self.__update(x), axis=1)
-        return edges.to_dict('index')
+        return self.uToV
 
     def __update(self,x):
         self.uToV[x.u].append((x.name, x.v))
@@ -153,12 +155,11 @@ class OsmGraph:
         shortestPath = nx.shortest_path(G=self.graph, source=origNode, target=destNode, weight='length')
         return shortestPath
 
-    def ecoPath(self, localRequest):
+    def ecoPath(self, localRequest, lookUpTable):
         self.origNode, self.destNode = self.getODNodesFromODPair(localRequest.odPair)
         self.estimationModel = EstimationModel("fuel")
-
         #ecoPath, ecoEnergy, ecoEdgePath = self.dijkstra()
-        ecoPath, ecoEnergy, ecoEdgePath = self.aStar(localRequest)
+        ecoPath, ecoEnergy, ecoEdgePath = self.aStar(localRequest, lookUpTable)
         return ecoPath, ecoEnergy, ecoEdgePath
 
     def fastestPath(self, localRequest):
@@ -167,15 +168,57 @@ class OsmGraph:
         fastestPath, shortestTime, fastestEdgePath = self.dijkstra(localRequest)
         return fastestPath, shortestTime, fastestEdgePath
 
-    def dijkstra(self):
-        routingModel = Dijkstra(self.getEdgesDict(), self.uToV, self.origNode, self.destNode, self.estimationModel)
+    def dijkstra(self, localRequest):
+        routingModel = Dijkstra(self.getEdgesDict(), self.getUToV(), self.origNode, self.destNode, self.estimationModel)
         return routingModel.routing()
 
-    def aStar(self, localRequest):
-        routingModel = AStar(self.getEdgesDict(), self.uToV, self.origNode, self.destNode, self.estimationModel,
-                             localRequest, self.getNodes())
+    def aStar(self, localRequest, lookUpTable):
+        routingModel = AStar(self.getEdgesDict(), self.getUToV(), self.origNode, self.destNode, self.estimationModel,
+                             localRequest, self.getNodes(), lookUpTable)
         #print('initialized')
         return routingModel.routing()
+
+    def extractAllWindows(self, lenthOfWindows):
+        uToV = self.getUToV()
+        windowList, tempWindowStack, tempNodeIdStack = [], [], []
+        for i in uToV:
+            listOfNodes = uToV[i]
+            for edgeIdAndV in listOfNodes:
+                edgeIdInGdf = edgeIdAndV[0]
+                nextNodeId = edgeIdAndV[1]
+                tempWindowStack.append([edgeIdInGdf])
+                tempNodeIdStack.append(nextNodeId)
+            tempWindowStack.append([-1])
+            tempNodeIdStack.append(i)
+            tempWindowStack.append([-1, -1])
+            tempNodeIdStack.append(i)
+        while tempWindowStack:
+            tempWindow = list(tempWindowStack.pop())
+
+            tempNode = tempNodeIdStack.pop()
+            listOfNodes = uToV[tempNode]
+            #print(tempWindow, tempNode,  listOfNodes)
+            if len(tempWindow) == lenthOfWindows-1:
+                tempWindow.append(-1)
+                windowList.append(WindowFromList(tempWindow))
+                tempWindow.pop()
+                for edgeIdAndV in listOfNodes:
+                    edgeIdInGdf = edgeIdAndV[0]
+                    tempWindow.append(edgeIdInGdf)
+                    #copy.deepcopy(tempWindow)
+                    windowList.append(WindowFromList(tempWindow))
+                    tempWindow.pop()
+            else:
+                for edgeIdAndV in listOfNodes:
+                    edgeIdInGdf = edgeIdAndV[0]
+                    nextNodeId = edgeIdAndV[1]
+                    tempWindow.append(edgeIdInGdf)
+                    #copy.deepcopy(tempWindow)
+                    tempWindowStack.append(tuple(tempWindow))
+                    tempNodeIdStack.append(nextNodeId)
+                    tempWindow.pop()
+        return windowList
+
 
     def totalLength(self, path):
         length = 0
@@ -210,11 +253,11 @@ class OsmGraph:
             addValue = estimationModel.predict(numericalFeatures, categoricalFeatures)
             value += addValue
             pointList.append((str(window.minusSeg)+',' + str(window),numericalFeatures, categoricalFeatures, addValue, value))
-        f = estimationType+'.txt'
-        filename = open(f, 'w')
-        for p in pointList:
-            filename.write(str(p) + "\n")
-        filename.close()
+        #f = estimationType+'.txt'
+        #filename = open(f, 'w')
+        #for p in pointList:
+            #filename.write(str(p) + "\n")
+        #filename.close()
         return value
 
     def __findSegId(self, path, i):

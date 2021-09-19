@@ -16,6 +16,8 @@ class Window:
     def __str__(self):
         return str(self.prevSeg)+',' + str(self.midSeg) +',' + str(self.sucSeg)
 
+    def getTup(self):
+        return tuple([self.minusSeg, self.prevSeg, self.midSeg, self.sucSeg])
 
     def valid(self):
         return self.prevSeg != self.sucSeg
@@ -27,6 +29,14 @@ class Window:
         numericalFeatures = [prevSegNumFeature, midSegNumFeature, sucSegNumFeature]
         categoricalFeatures = [prevSegCatFeature, midSegCatFeature, sucSegCatFeature]
         return numericalFeatures, categoricalFeatures
+
+
+class WindowFromList(Window):
+    def __init__(self, segList):
+        self.minusSeg = segList[0]
+        self.prevSeg = segList[1]
+        self.midSeg = segList[2]
+        self.sucSeg = segList[3]
 
 
 def edgeFeature(segmentIDInGdf, edgesDict, prevEdgeId):
