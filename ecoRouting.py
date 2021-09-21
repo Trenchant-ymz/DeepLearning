@@ -47,7 +47,7 @@ class ParameterForTableIni:
     def __init__(self, windowList, osmGraph, estMode = 'fuel'):
         self.temperatureList = [1]
         self.massList = [23000]
-        self.dayList = [1]
+        self.dayList = [1,2]
         self.timeList = [1,3]
         self.windowList = windowList
         self.osmGraph = osmGraph
@@ -60,18 +60,20 @@ def main():
     osmGraphInBbox = extractGraphOf(locationRequest.boundingBox)
     nodes, edges = osmGraphInBbox.graphToGdfs()
     extractElevation(nodes, edges)
-    edges = edgePreprocessing(nodes, edges, locationRequest.temperature, locationRequest.mass\
-                              ,locationRequest.dayOfTheWeek, locationRequest.timeOfTheDay)
+    # for look-up-table method, the edges donot neet to be preprocessed.
+    edges = edgePreprocessing(nodes, edges, locationRequest.temperature, locationRequest.mass ,locationRequest.dayOfTheWeek, locationRequest.timeOfTheDay)
     graphWithElevation = GraphFromGdfs(nodes, edges)
     graphWithElevation.removeIsolateNodes()
     print('Graph loaded!')
     estMode = "fuel"
-    filename = "lookUpTableFor"+ estMode
+    filename = "lookUpTableFor" + estMode
     # train new table and save it to filename.pkl
-    lookUpTable = trainNewLUTable(graphWithElevation, locationRequest, filename, mode=estMode)
+    #lookUpTable = trainNewLUTable(graphWithElevation, locationRequest, filename, mode=estMode)
     # load table from filename.pkl
-    #lookUpTable = LookUpTable(locationRequest, filename)
+    lookUpTable = LookUpTable(locationRequest, filename)
+    #windowList = graphWithElevation.extractAllWindows(4)
     #energyEst = lookUpTable.extractValue(windowList[0])
+    #print(energyEst)
     print(len(lookUpTable))
     #print(windowList[0], energyEst)
     # shortest route
@@ -79,8 +81,8 @@ def main():
     #shortestPath = nodePathTOEdgePath(shortestNodePath, edges)
     #calAndPrintPathAttributes(graphWithElevation, shortestPath, "shortestPath")
     # eco route
-    #ecoRoute, energyOnEcoRoute, ecoEdgePath = findEcoPathAndCalEnergy(graphWithElevation, locationRequest, lookUpTable)
-    #calAndPrintPathAttributes(graphWithElevation, ecoEdgePath, "ecoRoute")
+    ecoRoute, energyOnEcoRoute, ecoEdgePath = findEcoPathAndCalEnergy(graphWithElevation, locationRequest, lookUpTable)
+    calAndPrintPathAttributes(graphWithElevation, ecoEdgePath, "ecoRoute")
     # fastest route
     #fastestPath, shortestTime, fastestEdgePath = findFastestPathAndCalTime(graphWithElevation, locationRequest)
     #calAndPrintPathAttributes(graphWithElevation, fastestEdgePath, "fastestPath")

@@ -26,7 +26,7 @@ contains the statistical data of our data used in the pre-training stage, includ
    
    
 ## Files
-1. In [eco routing.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/eco%20routing.py), a(n)
+1. In [ecoRouting.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/ecoRouting.py), a(n)
    shortest/ eco/ fastest route can be extracted given a request of a origin-destination pair and a bounding-box.
 2. [training and testing.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/training%20and%20testing.py) 
    is used to train/test a model with data in 

@@ -4,7 +4,7 @@ import os
 from edgeGdfPreprocessing import edgePreprocessing
 from estimationModel import EstimationModel
 from window import Window
-from pathGraph import NodeInPathGraph
+from windowNode import NodeInPathGraph
 import time
 from collections import defaultdict
 import math
@@ -33,7 +33,6 @@ class Dijkstra:
         self.notPassedNodeQ.insert(self.dummyOriNodeInPathGraph, 0)
         self.lookUpTable = lookUpTable
         listOfNodesFromOrig = self.uToV[self.origNode]
-        print(listOfNodesFromOrig)
         self.initializeQ(listOfNodesFromOrig)
         if not len(listOfNodesFromOrig):
             print("not path from node:", self.origNode)
@@ -176,7 +175,7 @@ class AStar(Dijkstra):
         self.hValues = defaultdict(float)
         #self.pointList = []
         self.localRequest = localRequest
-        self.nodes = nodes
+        self.nodes = nodes.to_dict('index')
         super().__init__(edgesDict,uToV , origNode, destNode, estimationModel, lookUpTable)
         self.hValues[self.dummyOriNodeInPathGraph] = 0
         self.notPassedNodeDict[self.dummyOriNodeInPathGraph] = 0
@@ -190,8 +189,8 @@ class AStar(Dijkstra):
             nextNodeId = edgeIdAndV[1]
             nextWindow = Window(self.dummyWindow.prevSeg, self.dummyWindow.midSeg, self.dummyWindow.sucSeg, edgeIdInGdf)
             hValOfNextNode = self.calH(nextNodeId)
-            nextNodeInPathGraph = NodeInPathGraph(nextWindow, nextNodeId, self.dummyOriNodeInPathGraph, edgeIdInGdf,hValOfNextNode)
-            self.notPassedNodeQ.insert(nextNodeInPathGraph, 0)
+            nextNodeInPathGraph = NodeInPathGraph(nextWindow, nextNodeId, self.dummyOriNodeInPathGraph, edgeIdInGdf, hValOfNextNode)
+            self.notPassedNodeQ.insert(nextNodeInPathGraph, hValOfNextNode)
             self.hValues[nextNodeInPathGraph] = hValOfNextNode
             #print(edgeIdAndV, self.hValues)
             self.notPassedNodeDict[nextNodeInPathGraph] = hValOfNextNode
@@ -206,20 +205,18 @@ class AStar(Dijkstra):
         #print(curNodeInPathGraph, valOfCurNode)
         #self.pointList.append((curNodeInPathGraph.getStr(), valOfCurNode))
         hvalue = self.hValues[curNodeInPathGraph]
-        if curNodeInPathGraph not in self.hValues:
-            print(curNodeInPathGraph)
         self.notPassedNodeQ.remove(curNodeInPathGraph)
         _ = self.notPassedNodeDict.pop(curNodeInPathGraph)
         self.passedNodesSet.add(curNodeInPathGraph)
+        curGVal = valOfCurNode - hvalue
         if self.isDestNode(curNodeInPathGraph):
-            self.minVal = valOfCurNode - hvalue
+            self.minVal = curGVal
             self.destNodeGenerated = curNodeInPathGraph
             return
-        self.exploreNextNode(curNodeInPathGraph,valOfCurNode)
+        self.exploreNextNode(curNodeInPathGraph,curGVal)
 
 
-    def exploreNextNodeFromEdge(self, curNodeInPathGraph,valOfCurNode):
-        hValOfCurNode = self.hValues[curNodeInPathGraph]
+    def exploreNextNodeFromEdge(self, curNodeInPathGraph,curGVal):
         #print("curbest", valOfCurNode, hValOfCurNode)
         listOfNodes = self.uToV[curNodeInPathGraph.node]
         for edgeIdAndV in listOfNodes:
@@ -233,9 +230,10 @@ class AStar(Dijkstra):
                 else:
                     hValOfNextNode = self.calH(nextNodeId)
                     self.hValues[nextNodeInPathGraph] = hValOfNextNode
+                #valOfNextNode = self.calVal(nextNodeInPathGraph)
                 valOfNextNode = self.calValWithLUTable(nextNodeInPathGraph)
                 #self.pointList.append((nextNodeInPathGraph.getStr(), valOfNextNode, valOfCurNode, hValOfCurNode))
-                self.updateQInAStar(nextNodeInPathGraph, valOfNextNode+valOfCurNode-hValOfCurNode, hValOfNextNode)
+                self.updateQInAStar(nextNodeInPathGraph, valOfNextNode+curGVal, hValOfNextNode)
 
 
     def updateQInAStar(self, nextNodeInPathGraph, curGValEst, hValOfNextNode):
@@ -267,7 +265,7 @@ class AStar(Dijkstra):
         r = 1.225
         # m/s
         v = 20/3.6
-        curPoint = (self.nodes.loc[node, 'x'], self.nodes.loc[node, 'y'])
+        curPoint = (self.nodes[node]['x'], self.nodes[node]['x'])
         #curPoint = (curLine['x'], curLine['x'])
         #print("point", curPoint)
         dis, _ = self.pos2dist(curPoint, self.localRequest.destination.xy())

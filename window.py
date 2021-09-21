@@ -10,11 +10,11 @@ class Window:
         self.sucSeg = sucSeg
 
     def __eq__(self, other):
-        return self.prevSeg == other.prevSeg \
-               and self.midSeg == other.midSeg and self.sucSeg == other.sucSeg
+        return self.prevSeg == other.prevSeg and self.midSeg == other.midSeg and self.sucSeg == other.sucSeg
 
     def __str__(self):
         return str(self.prevSeg)+',' + str(self.midSeg) +',' + str(self.sucSeg)
+        # return str(self.prevSeg) + ',' + str(self.midSeg) + ',' + str(self.sucSeg)
 
     def getTup(self):
         return tuple([self.minusSeg, self.prevSeg, self.midSeg, self.sucSeg])

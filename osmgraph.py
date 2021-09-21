@@ -4,7 +4,7 @@ import os
 from edgeGdfPreprocessing import edgePreprocessing
 from estimationModel import EstimationModel
 from window import Window, WindowFromList
-from pathGraph import NodeInPathGraph
+from windowNode import NodeInPathGraph
 import time
 from collections import defaultdict
 from routingAlgorithms import Dijkstra, AStar
@@ -162,14 +162,14 @@ class OsmGraph:
         ecoPath, ecoEnergy, ecoEdgePath = self.aStar(localRequest, lookUpTable)
         return ecoPath, ecoEnergy, ecoEdgePath
 
-    def fastestPath(self, localRequest):
+    def fastestPath(self, localRequest, lookUpTable = None):
         self.origNode, self.destNode = self.getODNodesFromODPair(localRequest.odPair)
         self.estimationModel = EstimationModel("time")
-        fastestPath, shortestTime, fastestEdgePath = self.dijkstra(localRequest)
+        fastestPath, shortestTime, fastestEdgePath = self.dijkstra(localRequest, lookUpTable)
         return fastestPath, shortestTime, fastestEdgePath
 
-    def dijkstra(self, localRequest):
-        routingModel = Dijkstra(self.getEdgesDict(), self.getUToV(), self.origNode, self.destNode, self.estimationModel)
+    def dijkstra(self, localRequest, lookUpTable):
+        routingModel = Dijkstra(self.getEdgesDict(), self.getUToV(), self.origNode, self.destNode, self.estimationModel, lookUpTable)
         return routingModel.routing()
 
     def aStar(self, localRequest, lookUpTable):
@@ -234,12 +234,12 @@ class OsmGraph:
 
     def __calculateValue(self, path, estimationType):
         edgeDict = self.getEdgesDict()
-        pointList = []
+        # pointList = []
         estimationModel = EstimationModel(estimationType)
         value = 0
         firstSeg = path[0]
         window = Window(-1, -1, -1, firstSeg)
-        prevWindowSeg = -1
+        # prevWindowSeg = -1
         for i in range(len(path)):
             window.minusSeg = window.prevSeg
             window.prevSeg = window.midSeg
@@ -249,15 +249,15 @@ class OsmGraph:
             else:
                 window.sucSeg = -1
             numericalFeatures, categoricalFeatures = window.extractFeatures(edgeDict)
-            #print(numericalFeatures, categoricalFeatures)
+            # print(numericalFeatures, categoricalFeatures)
             addValue = estimationModel.predict(numericalFeatures, categoricalFeatures)
             value += addValue
-            pointList.append((str(window.minusSeg)+',' + str(window),numericalFeatures, categoricalFeatures, addValue, value))
-        #f = estimationType+'.txt'
-        #filename = open(f, 'w')
-        #for p in pointList:
-            #filename.write(str(p) + "\n")
-        #filename.close()
+            # pointList.append((str(window.minusSeg)+',' + str(window), numericalFeatures, categoricalFeatures, addValue, value))
+        # f = estimationType+'.txt'
+        # filename = open(f, 'w')
+        # for p in pointList:
+        #     filename.write(str(p) + "\n")
+        # filename.close()
         return value
 
     def __findSegId(self, path, i):

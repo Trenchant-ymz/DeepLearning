@@ -75,10 +75,12 @@ class ObdData(Dataset):
 
                         # length -> the number of segments in the trip
                         # 6 numerical attributes
+                        # speed_limit,mass,elevation_change,previous_orientation,length,direction_angle
                         if self.withoutElevation == True:
                             data_row[0] = list(map(float, data_row[0][1:-1].split(", ")))[:2]+list(map(float, data_row[0][1:-1].split(", ")))[3:]
                         else:
                             data_row[0] = list(map(float, data_row[0][1:-1].split(", ")))
+                            #data_row[0][1] = 0
                         # label
                         if self.label_dimension == 2:
                             data_row[1] = list(map(float, data_row[1][1:-1].split(", ")))
@@ -148,7 +150,7 @@ class ObdData(Dataset):
 
 def testDataloader():
     # test dataloader
-    db = ObdData("normalized data", "test", percentage=20, label_dimension= 1,withoutElevation=True)
+    db = ObdData("normalized data", "test", percentage=20, label_dimension= 2,withoutElevation=False)
     x,y,c = next(iter(db))
     print("data:", x, y, c)
 
