@@ -14,7 +14,7 @@ from bintrees import RBTree
 from math import inf
 
 class Dijkstra:
-    def __init__(self, edgesDict, uToV , origNode, destNode, estimationModel, lookUpTable):
+    def __init__(self, edgesDict, uToV , origNode, destNode, estimationModel):
         #self.pointList = []
         self.passedNodesSet = set()
         self.notPassedNodeDict = dict()
@@ -31,7 +31,6 @@ class Dijkstra:
         self.dummyDestNodeInPathGraph = self.generateDummyDestNode()
         self.notPassedNodeQ = RBTree()
         self.notPassedNodeQ.insert(self.dummyOriNodeInPathGraph, 0)
-        self.lookUpTable = lookUpTable
         listOfNodesFromOrig = self.uToV[self.origNode]
         self.initializeQ(listOfNodesFromOrig)
         if not len(listOfNodesFromOrig):
@@ -111,7 +110,7 @@ class Dijkstra:
         nextNodeId = -1
         nextWindow = Window(curNodeInPathGraph.window.prevSeg, curNodeInPathGraph.window.midSeg, curNodeInPathGraph.window.sucSeg, -1)
         nextNodes = NodeInPathGraph(nextWindow, nextNodeId, curNodeInPathGraph, -1)
-        valOfNextNode = self.calValWithLUTable(nextNodes)
+        valOfNextNode = self.calVal(nextNodes)
         self.updateQ(nextNodes, valOfCurNode+valOfNextNode)
         return
 
@@ -123,7 +122,7 @@ class Dijkstra:
             nextWindow = Window(curNodeInPathGraph.window.prevSeg, curNodeInPathGraph.window.midSeg, curNodeInPathGraph.window.sucSeg, edgeIdInGdf)
             nextNodeInPathGraph = NodeInPathGraph(nextWindow, nextNodeId, curNodeInPathGraph, edgeIdInGdf)
             if nextWindow.valid() and nextNodeInPathGraph not in self.passedNodesSet:
-                valOfNextNode = self.calValWithLUTable(nextNodeInPathGraph)
+                valOfNextNode = self.calVal(nextNodeInPathGraph)
                 self.updateQ(nextNodeInPathGraph, valOfNextNode+valOfCurNode)
 
     def updateQ(self, nextNodeInPathGraph, curShortPathEst):
@@ -146,12 +145,6 @@ class Dijkstra:
             numericalFeatures, categoricalFeatures = curNodeInPathGraph.window.extractFeatures(self.edgesDict)
             return self.estimationModel.predict(numericalFeatures, categoricalFeatures)
 
-    def calValWithLUTable(self, curNodeInPathGraph):
-        if curNodeInPathGraph.window.midSeg == -1:
-            return 0
-        else:
-            return self.lookUpTable.extractValue(curNodeInPathGraph.window)
-
     def generateMinValNodePath(self):
         dNode = self.destNodeGenerated
         pathWitMinVal = [dNode.node]
@@ -171,12 +164,12 @@ class Dijkstra:
 
 class AStar(Dijkstra):
 
-    def __init__(self, edgesDict, uToV , origNode, destNode, estimationModel, localRequest, nodes, lookUpTable):
+    def __init__(self, edgesDict, uToV , origNode, destNode, estimationModel, localRequest, nodes):
         self.hValues = defaultdict(float)
         #self.pointList = []
         self.localRequest = localRequest
         self.nodes = nodes.to_dict('index')
-        super().__init__(edgesDict,uToV , origNode, destNode, estimationModel, lookUpTable)
+        super().__init__(edgesDict,uToV , origNode, destNode, estimationModel)
         self.hValues[self.dummyOriNodeInPathGraph] = 0
         self.notPassedNodeDict[self.dummyOriNodeInPathGraph] = 0
         #print(self.notPassedNodeQ)
@@ -231,7 +224,7 @@ class AStar(Dijkstra):
                     hValOfNextNode = self.calH(nextNodeId)
                     self.hValues[nextNodeInPathGraph] = hValOfNextNode
                 #valOfNextNode = self.calVal(nextNodeInPathGraph)
-                valOfNextNode = self.calValWithLUTable(nextNodeInPathGraph)
+                valOfNextNode = self.calVal(nextNodeInPathGraph)
                 #self.pointList.append((nextNodeInPathGraph.getStr(), valOfNextNode, valOfCurNode, hValOfCurNode))
                 self.updateQInAStar(nextNodeInPathGraph, valOfNextNode+curGVal, hValOfNextNode)
 
@@ -297,3 +290,29 @@ class AStar(Dijkstra):
         d1 = radius * c * 1000  # Haversine distance
         d2 = radius * math.sqrt(x * x + y * y) * 1000 # Pythagorean distance
         return d1, d2
+
+
+class DijkstraFromLUTable(Dijkstra):
+
+    def __init__(self, edgesDict, uToV , origNode, destNode, estimationModel, lookUpTable):
+        super().__init__(edgesDict, uToV, origNode, destNode, estimationModel)
+        self.lookUpTable = lookUpTable
+
+    def calVal(self, curNodeInPathGraph):
+        if curNodeInPathGraph.window.midSeg == -1:
+            return 0
+        else:
+            return self.lookUpTable.extractValue(curNodeInPathGraph.window)
+
+
+class AStarFromLUTable(AStar):
+
+    def __init__(self, edgesDict, uToV , origNode, destNode, estimationModel, localRequest, nodes, lookUpTable):
+        super().__init__(edgesDict, uToV , origNode, destNode, estimationModel, localRequest, nodes)
+        self.lookUpTable = lookUpTable
+
+    def calVal(self, curNodeInPathGraph):
+        if curNodeInPathGraph.window.midSeg == -1:
+            return 0
+        else:
+            return self.lookUpTable.extractValue(curNodeInPathGraph.window)

@@ -43,7 +43,7 @@ head_number = 1
 # length of path used for training/validation
 train_path_length = 10
 # length of path used for test
-test_path_length = 1
+test_path_length = 200
 
 # window size 3 best
 window_sz = 3
@@ -75,7 +75,7 @@ else:
 # output_root = "/content/drive/MyDrive/Colab_Notebooks/DeepLearning/prediction_result.csv"
 # local
 #ckpt_path = "best_13d_fuel.mdl"
-ckpt_path = "best_13d_fuelSimulateData.mdl"
+ckpt_path = "best_13d_fuelSimulateDatamlDrop180.mdl"
 data_root = "model_data_newSep"
 #data_root = "normalized data"
 #data_root = "DataDifferentiated"
@@ -152,15 +152,18 @@ def eval(model, loader, output = False):
                 #print(x_segment.shape,c_segment.shape)
                 pred = model(x_segment, c_segment)
 
-                # [batch size, output dimension]
-                pred_segment += pred
-                #pred_segment_denormalized += denormalize(pred)
-                # [batch size, output dimension]
                 if output_dimension == 1:
                     label = y[:, i, window_sz // 2].unsqueeze(-1)
                 else:
                     t = torch.tensor([1, 0.01]).unsqueeze(0).to(device)
                     label = y[:, i, window_sz // 2] * t
+
+
+                # [batch size, output dimension]
+                pred_segment += pred
+                #pred_segment_denormalized += denormalize(pred)
+                # [batch size, output dimension]
+
 
                 # [batch size, output dimension]
                 label_segment += label

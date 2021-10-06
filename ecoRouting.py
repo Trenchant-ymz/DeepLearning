@@ -17,20 +17,18 @@ from lookUpTable import LookUpTable
 
 
 class LocationRequest:
-    def __init__(self):
-        # Murphy Depot
+    def __init__(self, origin, destination,boundingBox):
         # (longitude, latitude)
-        self.origin = Point(-93.2219, 44.979)
+        self.origin = origin
         # test
         #self.origin = Point(-93.4254, 44.7888)
         #self.origin = Point(-93.470167, 44.799720)
         #origin = Point(-93.2466, 44.8959)
-        # Shakopee East (Depot):
-        self.destination = Point(-93.4620, 44.7903)
+        self.destination = destination
         #self.destination = Point(-93.230358, 44.973583)
 
         self.odPair = OdPair(self.origin, self.destination)
-        self.boundingBox = Box(-93.4975, -93.1850, 44.7458, 45.0045)
+        self.boundingBox = boundingBox
         self.temperature = 1
         self.mass = 23000
         # Monday
@@ -56,12 +54,16 @@ class ParameterForTableIni:
 
 
 def main():
-    locationRequest = LocationRequest()
+    # Murphy depot => Shakopee East (Depot)
+    origin, destination = Point(-93.2219, 44.979), Point(-93.4620, 44.7903)
+    boundingBox = Box(-93.4975, -93.1850, 44.7458, 45.0045)
+
+    locationRequest = LocationRequest(origin, destination,boundingBox)
     osmGraphInBbox = extractGraphOf(locationRequest.boundingBox)
     nodes, edges = osmGraphInBbox.graphToGdfs()
     extractElevation(nodes, edges)
-    # for look-up-table method, the edges donot neet to be preprocessed.
-    edges = edgePreprocessing(nodes, edges, locationRequest.temperature, locationRequest.mass ,locationRequest.dayOfTheWeek, locationRequest.timeOfTheDay)
+    # for look-up-table method, the edges don't need to be preprocessed.
+    edges = edgePreprocessing(nodes, edges, locationRequest.temperature, locationRequest.mass, locationRequest.dayOfTheWeek, locationRequest.timeOfTheDay)
     graphWithElevation = GraphFromGdfs(nodes, edges)
     graphWithElevation.removeIsolateNodes()
     print('Graph loaded!')
@@ -70,23 +72,24 @@ def main():
     # train new table and save it to filename.pkl
     #lookUpTable = trainNewLUTable(graphWithElevation, locationRequest, filename, mode=estMode)
     # load table from filename.pkl
-    lookUpTable = LookUpTable(locationRequest, filename)
+    #lookUpTable = LookUpTable(locationRequest, filename)
     #windowList = graphWithElevation.extractAllWindows(4)
     #energyEst = lookUpTable.extractValue(windowList[0])
     #print(energyEst)
-    print(len(lookUpTable))
+    #print(len(lookUpTable))
+    lookUpTable = None
     #print(windowList[0], energyEst)
     # shortest route
-    #shortestNodePath = findShortestPath(graphWithElevation, locationRequest)
-    #shortestPath = nodePathTOEdgePath(shortestNodePath, edges)
-    #calAndPrintPathAttributes(graphWithElevation, shortestPath, "shortestPath")
+    # shortestNodePath = findShortestPath(graphWithElevation, locationRequest)
+    # shortestPath = nodePathTOEdgePath(shortestNodePath, edges)
+    # calAndPrintPathAttributes(graphWithElevation, shortestPath, "shortestPath")
     # eco route
     ecoRoute, energyOnEcoRoute, ecoEdgePath = findEcoPathAndCalEnergy(graphWithElevation, locationRequest, lookUpTable)
     calAndPrintPathAttributes(graphWithElevation, ecoEdgePath, "ecoRoute")
     # fastest route
     #fastestPath, shortestTime, fastestEdgePath = findFastestPathAndCalTime(graphWithElevation, locationRequest)
     #calAndPrintPathAttributes(graphWithElevation, fastestEdgePath, "fastestPath")
-    #plotRoutes([shortestPath, ecoEdgePath, fastestEdgePath], edges, ['green', 'red', 'blue'], ['shortest route', 'eco route', 'fastest route'])
+    # plotRoutes([ecoEdgePath,fastestEdgePath,shortestPath], edges, ['green','red','blue'], ['eco route','shortest time route','shortest distance route'], 'resultml')
     #graphWithElevation.plotPathList([shortestNodePath, ecoRoute, fastestPath],'routing result.pdf')
 
 
@@ -98,11 +101,14 @@ def trainNewLUTable(graphWithElevation, locationRequest, filename, mode='fuel'):
     return lookUpTable
 
 def extractGraphOf(boundingBox):
-    folderOfGraph = r'GraphDataInBbox'
-    if os.path.exists(folderOfGraph):
+    folderOfGraph = r'Graphs/GraphDataInBbox'+str(boundingBox)
+    print(folderOfGraph)
+    if os.path.exists(os.path.join(folderOfGraph,'osmGraph.graphml')):
         print("reloading graph..")
         osmGraph = GraphFromHmlFile(os.path.join(folderOfGraph, 'osmGraph.graphml'))
     else:
+        if not os.path.exists(folderOfGraph):
+            os.makedirs(folderOfGraph)
         print("downloading graph..")
         osmGraph = GraphFromBbox(boundingBox)
         osmGraph.saveHmlTo(folderOfGraph)
@@ -182,9 +188,8 @@ def calAndPrintPathAttributes(osmGraph, edgePath, pathname):
     return
 
 # plot map matching results
-def plotRoutes(routeList, network_gdf, colorLists, nameLists):
+def plotRoutes(routeList, network_gdf, colorLists, nameLists, filename):
     directory = './results'
-    colorLists = ['green', 'red', 'blue']
     if not os.path.exists(directory):
         os.makedirs(directory)
     edgeLongList = []
@@ -232,7 +237,7 @@ def plotRoutes(routeList, network_gdf, colorLists, nameLists):
                             'lon': long_center},
                             'zoom': zoom})
 
-    plotly.offline.plot(fig,filename = os.path.join(directory,'resultnewdropped.html'),auto_open=True)
+    plotly.offline.plot(fig,filename = os.path.join(directory,filename+'.html'),auto_open=True)
 
 '''
 def calAndPrintPathAttributes(osmGraph, path, edgePath, pathname):

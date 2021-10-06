@@ -10,10 +10,18 @@ import csv
 import time
 import visdom
 from tqdm import tqdm
+
 # Before running the code, run 'python -m visdom.server' in the terminal to open visdom panel.
 
 # divide a segment equally into n parts according to the length
 lengthOfVelocityProfile = 10
+
+# m
+meanOfSegmentLength = 607.8692133
+stdOfSegmentLength = 899.7448693
+
+omega_time = 0.5
+omega_fuel = 0.5
 
 # batch size 512 BEST
 batchsz = 512
@@ -31,7 +39,7 @@ torch.manual_seed(seed)
 torch.cuda.manual_seed(seed)
 np.random.seed(seed)
 # dimension of the output: [fuel consumption, time]
-output_dimension = 2
+label_dimension = 2
 
 # dimension of the input numerical features:
 # [speed limit, mass, elevation change, previous orientation, length, direction angle]
@@ -74,41 +82,55 @@ data_root = "model_data_newSep"
 output_root = "prediction_result.csv"
 
 # load data
-train_db = ObdData(root=data_root,mode = "train",percentage=10, window_size=window_sz,\
-                   path_length=train_path_length, label_dimension=output_dimension, pace=pace_train,withoutElevation=False)
-val_db = ObdData(root=data_root,mode="val",percentage=10,window_size=window_sz,\
-                 path_length=train_path_length, label_dimension=output_dimension, pace=pace_test,withoutElevation=False)
-test_db = ObdData(root=data_root,mode="test",percentage=10,window_size=window_sz,\
-                  path_length=test_path_length, label_dimension=output_dimension, pace=pace_test,withoutElevation=False)
+train_db = ObdData(root=data_root, mode = "train", percentage=10, window_size=window_sz, \
+                   path_length=train_path_length, label_dimension=label_dimension, pace=pace_train, withoutElevation=False)
+val_db = ObdData(root=data_root, mode="val", percentage=10, window_size=window_sz, \
+                 path_length=train_path_length, label_dimension=label_dimension, pace=pace_test, withoutElevation=False)
+test_db = ObdData(root=data_root, mode="test", percentage=10, window_size=window_sz, \
+                  path_length=test_path_length, label_dimension=label_dimension, pace=pace_test, withoutElevation=False)
 train_loader = DataLoader(train_db, batch_size=batchsz, num_workers=0)
 val_loader = DataLoader(val_db, batch_size=batchsz, num_workers=0)
 test_loader = DataLoader(test_db, batch_size=batchsz, num_workers=0)
 
 
+def denormalize(normalized, mean, std):
+    return normalized*std + mean
+
 def mape_loss(label, pred):
     """
-    Calculate Mean Absolute Percentage Error of the energy consumption estimation
+    Calculate Mean Absolute Percentage Error
     labels with 0 value are masked
-    :param pred: [batchsz, output dimension]
-    :param label: [batchsz, output dimension]
+    :param pred: [batchsz]
+    :param label: [batchsz]
     :return: MAPE
     """
-    p = pred[:, 0]
-    l = label[:, 0]
-    mask = l >= 1e-4
+    mask = label >= 1e-4
 
-    loss_energy = torch.mean(torch.abs((p[mask] - l[mask]) / l[mask]))
+    mape = torch.mean(torch.abs((pred[mask] - label[mask]) / label[mask]))
     # print(p, l, loss_energy)
-    return loss_energy
+    return mape
 
 
 def timeEstimation(velocityProfile, length):
-    lengthOfOneSubSegment = length/len(velocityProfile)
-    estTime = sum(lengthOfOneSubSegment/velocityProfile)
+    '''
+
+    :param velocityProfile: a list of velocity profile (m/s)
+    :param length: m
+    :return: time: s
+    '''
+    lengthOfOneSubSegment = length/lengthOfVelocityProfile
+    # need to be revised
+    estTime = torch.sum(lengthOfOneSubSegment/velocityProfile)
     return estTime
 
 
 def fuelEstimation(velocityProfile, length):
+    '''
+
+    :param velocityProfile: a list of velocity profile (m/s)
+    :param length: m
+    :return: fuel: liter
+    '''
     return 0
 
 
@@ -124,16 +146,17 @@ def eval(model, loader, output = False):
         csvFile = open(output_root, "w")
         writer = csv.writer(csvFile)
         writer.writerow(["id", "ground truth fuel(l)", "ground truth time (s)", "estimated fuel (l)", "estimated time (s)"])
-    loss_mape = 0
+    loss_mape_fuel = 0
+    loss_mape_time = 0
     loss_mse = 0
     cnt = 0
     id = 0
     model.eval()
-    for x, y,c in loader:
+    for x, y, c in loader:
         #x, y, c = x.to(device), y.to(device), c.to(device)
         with torch.no_grad():
-            label_segment = torch.zeros(y.shape[0], output_dimension).to(device)
-            pred_segment = torch.zeros(y.shape[0], output_dimension).to(device)
+            label_segment = torch.zeros(y.shape[0], label_dimension).to(device)
+            pred_segment = torch.zeros(y.shape[0], label_dimension).to(device)
             #label_segment_denormalized = torch.zeros(y.shape[0], output_dimension).to(device)
             #pred_segment_denormalized = torch.zeros(y.shape[0], output_dimension).to(device)
 
@@ -145,39 +168,41 @@ def eval(model, loader, output = False):
                 c_segment = c[:, :, i, :]
                 # [batch size, output dimension]
                 #print(x_segment.shape,c_segment.shape)
-                pred = model(x_segment, c_segment)
+                velocityProfile = model(x_segment, c_segment)
+                # extract the length of this segment
+                # [batch size]
+                length = denormalize(x_segment[:, window_sz // 2, 4], meanOfSegmentLength, stdOfSegmentLength)
+                pred_Time = timeEstimation(velocityProfile, length)
+                pred_Fuel = fuelEstimation(velocityProfile, length)
 
                 # [batch size, output dimension]
-                pred_segment += pred
+                pred_segment[:, 0] += pred_Fuel
+                pred_segment[:, 1] += pred_Time
+
+
                 #pred_segment_denormalized += denormalize(pred)
                 # [batch size, output dimension]
-                if output_dimension == 1:
-                    label = y[:, i, window_sz // 2].unsqueeze(-1)
-                else:
-                    t = torch.tensor([1, 0.01]).unsqueeze(0).to(device)
-                    label = y[:, i, window_sz // 2] * t
+                t = torch.tensor([1, 0.01]).unsqueeze(0).to(device)
+                label = y[:, i, window_sz // 2] * t
 
                 # [batch size, output dimension]
                 label_segment += label
                 #label_segment_denormalized += denormalize(label)
 
                 if output:
-                    if output_dimension == 1:
-                        for j in range(y.shape[0]):
-                            writer.writerow([id, np.array(label[j,0].cpu()), "-", np.array(pred[j,0].cpu()),\
-                                             "-"])
-                    if output_dimension == 2:
-                        for j in range(y.shape[0]):
-                            writer.writerow([id, np.array(label[j, 0].cpu()), np.array(label[j, 1].cpu()), np.array(pred[j, 0].cpu()), \
-                                            np.array(pred[j, 1].cpu())])
+                    for j in range(y.shape[0]):
+                        writer.writerow([id, np.array(label[j, 0].cpu()), np.array(label[j, 1].cpu()), np.array(pred[j, 0].cpu()), np.array(pred[j, 1].cpu())])
                         id += 1
-            loss_mse += F.mse_loss(label_segment, pred_segment)*y.shape[0]
+            mse_fuel = F.mse_loss(label_segment[:0], pred_segment[:0])*y.shape[0]
+            mse_time = F.mse_loss(label_segment[:1], pred_segment[:1]) * y.shape[0]
+            loss_mse += omega_fuel * mse_fuel + omega_time * mse_time
             #print(label_segment, pred_segment, mape_loss(label_segment, pred_segment))
-            loss_mape += mape_loss(label_segment, pred_segment)*y.shape[0]
+            loss_mape_fuel += mape_loss(label_segment[:,0], pred_segment[:,0])*y.shape[0]
+            loss_mape_time += mape_loss(label_segment[:, 1], pred_segment[:, 1]) * y.shape[0]
             cnt += y.shape[0]
     if output:
         csvFile.close()
-    return loss_mape/cnt, loss_mse/cnt
+    return loss_mse/cnt, loss_mape_fuel/cnt, loss_mape_time/cnt
 
 
 def train():
@@ -208,9 +233,14 @@ def train():
     best_mape, best_mse, best_epoch = torch.tensor(float("inf")), torch.tensor(float("inf")), 0
     viz.line([0],[-1], win='train_mse', opts=dict(title='train_mse'))
     viz.line([0], [-1], win='val_mse', opts=dict(title='val_mse'))
-    viz.line([0], [-1], win='train_mape', opts=dict(title='train_mape'))
-    viz.line([0], [-1], win='val_mape', opts=dict(title='val_mape'))
     viz.line([0], [-1], win='learning rate', opts=dict(title='learning rate'))
+    viz.line([0], [-1], win='train_time_mse', opts=dict(title='train_time_mse'))
+    viz.line([0], [-1], win='train_fuel_mse', opts=dict(title='train_fuel_mse'))
+    viz.line([0], [-1], win='train_time_mape', opts=dict(title='train_time_mape'))
+    viz.line([0], [-1], win='train_fuel_mape', opts=dict(title='train_fuel_mape'))
+    viz.line([0], [-1], win='val_time_mape', opts=dict(title='val_time_mape'))
+    viz.line([0], [-1], win='val_fuel_mape', opts=dict(title='val_fuel_mape'))
+
     for epoch in range(epochs):
         model.train()
         for step, (x, y, c) in tqdm(enumerate(train_loader)):
@@ -222,8 +252,8 @@ def train():
             # For each batch, predict fuel consumption/time for each segment in a path and sum them
             # [batch size, output dimension]
 
-            label_segment = torch.zeros(y.shape[0], output_dimension).to(device)
-            pred_segment = torch.zeros(y.shape[0], output_dimension).to(device)
+            label_path = torch.zeros(y.shape[0], label_dimension).to(device)
+            pred_path = torch.zeros(y.shape[0], label_dimension).to(device)
             #label_segment_denormalized = torch.zeros(y.shape[0], output_dimension).to(device)
             #pred_segment_denormalized = torch.zeros(y.shape[0], output_dimension).to(device)
 
@@ -233,51 +263,67 @@ def train():
                 x_segment = x[:, i, :, :]
                 # [batch, categorical_dim, window size]
                 c_segment = c[:, :, i, :]
-                # [batch size, output dimension]
-                pred = model(x_segment, c_segment)
+                # [batch size, lengthOfVelocityProfile]
+                velocityProfile = model(x_segment, c_segment)
+                # extract the length of this segment
+                # [batch size]
+                length = denormalize(x_segment[:, window_sz // 2, 4], meanOfSegmentLength, stdOfSegmentLength)
+                pred_Time = timeEstimation(velocityProfile, length)
+                pred_Fuel = fuelEstimation(velocityProfile, length)
 
                 # [batch size, output dimension]
-                pred_segment += pred
+                pred_path[:, 0] += pred_Fuel
+                pred_path[:, 1] += pred_Time
                 #pred_segment_denormalized += denormalize(pred)
 
                 # [batch size, output dimension]
+                # time*0.01 so that time and fuel are in the similar unit
                 t = torch.tensor([1, 0.01]).unsqueeze(0).to(device)
                 label = y[:, i, window_sz // 2]*t
 
 
                 # [batch size, output dimension]
-                label_segment += label
+                label_path += label
                 #label_segment_denormalized += denormalize(label)
-            loss = criterion(label_segment, pred_segment)
-            #loss = mape_loss(label_segment, pred_segment)
+            loss_fuel = criterion(label_path[:0], pred_path[:0])
+            loss_time = criterion(label_path[:1], pred_path[:1])
+            #loss = mape_loss(label_path, pred_path)
             #print(loss)
-
+            loss = omega_fuel*loss_fuel + omega_time*loss_time
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
 
         viz.line([loss.item()], [global_step], win='train_mse', update='append')
-        loss_mape = mape_loss(label_segment, pred_segment)
-        viz.line([loss_mape.item()], [global_step], win='train_mape', update='append')
+        viz.line([loss_fuel.item()], [global_step], win='train_fuel_mse', update='append')
+        viz.line([loss_time.item()], [global_step], win='train_time_mse', update='append')
+
+        loss_mape_fuel = mape_loss(label_path[:, 0], pred_path[:, 0])
+        loss_mape_time = mape_loss(label_path[:, 1], pred_path[:, 1])
+
+        viz.line([loss_mape_fuel.item()], [global_step], win='train_fuel_mape', update='append')
+        viz.line([loss_mape_time.item()], [global_step], win='loss_mape_time', update='append')
+
         schedule.step(loss)
         learning_rate = optimizer.state_dict()['param_groups'][0]['lr']
         viz.line([learning_rate], [global_step], win='learning rate', update='append')
+
         # print("epoch:", epoch, "test_mse:", loss)
         if epoch % 1 == 0:
-            val_mape, val_mse = eval(model, val_loader)
+            val_mse, val_fuel_mape, val_time_mape = eval(model, val_loader)
             # schedule.step(val_mse)
-            print("epoch:", epoch, "val_mape(%):", np.array(val_mape.cpu())*100, "val_mse:", np.array(val_mse.cpu()))
+            print("epoch:", epoch, "val_mape_fuel(%):", np.array(val_fuel_mape.cpu())*100,"val_mape_time(%):", np.array(val_time_mape.cpu())*100, "val_mse:", np.array(val_mse.cpu()))
             print("epoch:", epoch,  "train_mse:", loss)
             if val_mse < best_mse:
                 best_epoch = epoch
                 best_mse = val_mse
                 torch.save(model.state_dict(), ckpt_path)
             viz.line([val_mse.item()], [global_step], win='val_mse', update='append')
+            viz.line([val_fuel_mape.item()], [global_step], win='val_fuel_mape', update='append')
+            viz.line([val_time_mape.item()], [global_step], win='val_time_mape', update='append')
 
-            viz.line([val_mape.item()], [global_step], win='val_mape', update='append')
-            #schedule.step(val_mse)
         global_step += 1
-    print("best_epoch:", best_epoch, "best_mape(%):", np.array(best_mape.cpu())*100, "best_mse:", np.array(best_mse.cpu()))
+    print("best_epoch:", best_epoch, "best_mse:", np.array(best_mse.cpu()))
 
 
 def test(output = False):
@@ -288,7 +334,7 @@ def test(output = False):
     """
 
     # load an existing model.
-    model = AttentionBlk(feature_dim=feature_dimension,embedding_dim=[4,2,2,2,2,4,4],num_heads=head_number,output_dimension=output_dimension)
+    model = AttentionBlk(feature_dim=feature_dimension, embedding_dim=[4,2,2,2,2,4,4], num_heads=head_number, output_dimension=lengthOfVelocityProfile)
     if os.path.exists(ckpt_path):
         print('Reloading model parameters..')
         model.load_state_dict(torch.load(ckpt_path, map_location=device))
@@ -298,8 +344,9 @@ def test(output = False):
     print(model)
     p = sum(map(lambda p: p.numel(), model.parameters()))
     print("number of parameters:", p)
-    test_mape, test_mse = eval(model, test_loader, output = output)
-    print("test_mape(%):", np.array(test_mape.cpu()) * 100)
+    test_mse, test_fuel_mape, test_time_mape = eval(model, test_loader, output = output)
+    print("test_mape_fuel(%):", np.array(test_fuel_mape.cpu()) * 100)
+    print("test_mape_fuel(%):", np.array(test_time_mape.cpu()) * 100)
     print("test_mse:", np.array(test_mse.cpu()))
 
 

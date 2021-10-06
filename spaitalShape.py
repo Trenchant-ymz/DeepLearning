@@ -26,6 +26,11 @@ class Box:
         self.latMin = latMin
         self.latMax = latMax
 
+    def __str__(self):
+        return str(self.lonMin)+','+str(self.lonMax)+','+str(self.latMin)+','+str(self.latMax)
+
     def polygon(self):
         x1, x2, y1, y2 = self.lonMin, self.lonMax, self.latMin, self.latMax
         return Polygon([(x1, y1), (x2, y1), (x2, y2), (x1, y2)])
+
+

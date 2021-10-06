@@ -11,7 +11,7 @@ class EstimationModel:
         device = torch.device("cuda")
     else:
         device = torch.device("cpu")
-    device = torch.device("cpu")
+    device = torch.device("cuda")
     def __init__(self, outputOfModel):
         '''
 
@@ -20,8 +20,8 @@ class EstimationModel:
         self.outputOfModel = outputOfModel
         self.model = AttentionBlk(feature_dim=self.featureDim, embedding_dim=self.embeddingDim,
                                   num_heads=self.numOfHeads, output_dimension=self.outputDimension)
-        self.modelAddress = "pretrained models/best_13d_" + self.outputOfModel + "SimulateData.mdl"
-        #self.modelAddress = "pretrained models/best_13d_" + self.outputOfModel + ".mdl"
+        self.modelAddress = "pretrained models/best_13d_" + self.outputOfModel + "SimulateDatamlDrop180.mdl"
+        #self.modelAddress = "pretrained models/best_13d_" + self.outputOfModel + "SimulateData.mdl"
         self.model.load_state_dict(torch.load(self.modelAddress, map_location=self.device))
         self.model.to(self.device)
 

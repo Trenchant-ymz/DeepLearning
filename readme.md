@@ -84,3 +84,6 @@ version 5.2: Using RBTree to store the value of nodes in the graph; Using dictio
 ### 2021/9/19
 version 5.3: Implement a Look-up-table method: Precalculate the fuel consumption of all the segments and save it to a look-up-table. 
 Reducing time complexity of eco-routing algorithm from 12 minutes to 140s.
+
+### 2021/10/6
+version 5.5: Change the unit of fuel from liter to Milliliter. Remove the incorrect map-matching results.

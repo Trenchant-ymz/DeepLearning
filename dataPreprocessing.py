@@ -97,7 +97,7 @@ print(len(train_list_1),len(val_list_1),len(test_list_1))
 
 df_test = df_test[['network_id', 'position',
        'road_type', 'average_speed', 'speed_limit', 'mass', 'elevation_change',
-       'previous_orientation', 'length', 'energy_consumption_total',
+       'previous_orientation', 'length', 'energy_consumption_total','siumlatedEnergyConsumption',
        'time',  'direction_angle', 'time_stage', 'week_day',
         'lanes', 'bridge', 'endpoint_u', 'endpoint_v', 'segment_count', 'trip','osmNodeIdUV' ]]
 
@@ -124,19 +124,19 @@ for i in d.sort_values().index:
     road_tp += 1
 
 
-output_root = "road_type_dictionary.csv"
+output_root = "DeepLearning/statistical data/road_type_dictionary.csv"
 csvFile = open(output_root, "w")
 writer = csv.writer(csvFile)
 writer.writerow(["road type", "value"])
 for i in dictionary:
     writer.writerow([i, dictionary[i]])
 csvFile.close()
-np.save('road_type_dictionary.npy', dictionary)
+np.save('DeepLearning/statistical data/road_type_dictionary.npy', dictionary)
 
 endpoints_dictionary = np.load('endpoints_dictionary.npy', allow_pickle=True).item()
 
 
-output_root = "endpoints_dictionary.csv"
+output_root = "DeepLearning/statistical data/endpoints_dictionary.csv"
 csvFile = open(output_root, "w")
 writer = csv.writer(csvFile)
 writer.writerow(["endpoint", "value"])
@@ -163,6 +163,7 @@ new_columns = ['average_speed',
  'endpoint_u',
  'endpoint_v',
  'energy_consumption_total',
+'siumlatedEnergyConsumption',
  'time',
  'segment_count',
  'trip',
@@ -170,7 +171,7 @@ new_columns = ['average_speed',
 
 df02 = df_test.reindex(columns=new_columns)
 
-output_root = "mean_std.csv"
+output_root = "DeepLearning/statistical data/mean_std.csv"
 csvFile = open(output_root, "w")
 writer = csv.writer(csvFile)
 writer.writerow(["attribute", "mean","std"])
@@ -185,16 +186,16 @@ csvFile.close()
 df_train = df02[df02['trip'].apply(lambda x: x in train_list)]
 df_val  = df02[df02['trip'].apply(lambda x: x in val_list)]
 df_t = df02[df02['trip'].apply(lambda x: x in test_list)]
-df_train.to_csv("train_data.csv")
-df_val.to_csv("val_data.csv")
-df_t.to_csv("test_data.csv")
+df_train.to_csv("data_dropped/20/train_data.csv")
+df_val.to_csv("data_dropped/20/val_data.csv")
+df_t.to_csv("data_dropped/20/test_data.csv")
 
 df_train = df02[df02['trip'].apply(lambda x: x in train_list_1)]
-df_val  = df02[df02['trip'].apply(lambda x: x in val_list_1)]
+df_val = df02[df02['trip'].apply(lambda x: x in val_list_1)]
 df_t = df02[df02['trip'].apply(lambda x: x in test_list_1)]
-df_train.to_csv("train_data_1.csv")
-df_val.to_csv("val_data_1.csv")
-df_t.to_csv("test_data_1.csv")
+df_train.to_csv("data_dropped/10/train_data.csv")
+df_val.to_csv("data_dropped/10/val_data.csv")
+df_t.to_csv("data_dropped/10/test_data.csv")
 
 # right one
 path = r'data_dropped'
@@ -212,9 +213,9 @@ for f,m,n in os.walk(path):
         for file in n:
             f_n = os.path.join(f,file)
             df_train = pd.read_csv(f_n, header=0)
-            df_train.describe()
+            print(df_train.describe())
             df_train = df_train.fillna(axis=0,method='ffill')
-            df_train.describe()
+            print(df_train.describe())
             # df_train['energy_consumption_total'] = df_train['energy_consumption_total'].apply(lambda x: 100*x)
             df_train['data'] = df_train.apply(lambda x: [x['speed_limit'],x['mass'],x['elevation_change'],x['previous_orientation'],x['length'],x['direction_angle']], axis = 1)
             df_train['label'] = df_train.apply(lambda x: [x["siumlatedEnergyConsumption"],x["time"]], axis = 1)

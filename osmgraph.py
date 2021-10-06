@@ -7,7 +7,7 @@ from window import Window, WindowFromList
 from windowNode import NodeInPathGraph
 import time
 from collections import defaultdict
-from routingAlgorithms import Dijkstra, AStar
+import routingAlgorithms
 import plotly.graph_objects as go
 import numpy as np
 import plotly
@@ -20,7 +20,6 @@ class OsmGraph:
         self.nodesGdf, self.edgesGdf = self.graphToGdfs()
 
     def saveHmlTo(self, folderAddress):
-        os.makedirs(folderAddress)
         ox.save_graphml(self.graph, filepath=os.path.join(folderAddress, 'osmGraph.graphml'))
 
     def graphToGdfs(self):
@@ -169,12 +168,20 @@ class OsmGraph:
         return fastestPath, shortestTime, fastestEdgePath
 
     def dijkstra(self, localRequest, lookUpTable):
-        routingModel = Dijkstra(self.getEdgesDict(), self.getUToV(), self.origNode, self.destNode, self.estimationModel, lookUpTable)
+        if lookUpTable is None:
+            routingModel = routingAlgorithms.Dijkstra(self.getEdgesDict(), self.getUToV(), self.origNode, self.destNode, self.estimationModel)
+        else:
+            routingModel = routingAlgorithms.DijkstraFromLUTable(self.getEdgesDict(), self.getUToV(), self.origNode, self.destNode,
+                                 self.estimationModel, lookUpTable)
         return routingModel.routing()
 
     def aStar(self, localRequest, lookUpTable):
-        routingModel = AStar(self.getEdgesDict(), self.getUToV(), self.origNode, self.destNode, self.estimationModel,
-                             localRequest, self.getNodes(), lookUpTable)
+        if lookUpTable is None:
+            routingModel = routingAlgorithms.AStar(self.getEdgesDict(), self.getUToV(), self.origNode, self.destNode, self.estimationModel,
+                             localRequest, self.getNodes())
+        else:
+            routingModel = routingAlgorithms.AStarFromLUTable(self.getEdgesDict(), self.getUToV(), self.origNode, self.destNode,
+                                 self.estimationModel, localRequest, self.getNodes(), lookUpTable)
         #print('initialized')
         return routingModel.routing()
 
@@ -227,6 +234,7 @@ class OsmGraph:
         return length
 
     def totalEnergy(self, path):
+        print(1)
         return self.__calculateValue(path, "fuel")
 
     def totalTime(self, path):
@@ -234,7 +242,7 @@ class OsmGraph:
 
     def __calculateValue(self, path, estimationType):
         edgeDict = self.getEdgesDict()
-        # pointList = []
+        pointList = []
         estimationModel = EstimationModel(estimationType)
         value = 0
         firstSeg = path[0]
@@ -252,12 +260,14 @@ class OsmGraph:
             # print(numericalFeatures, categoricalFeatures)
             addValue = estimationModel.predict(numericalFeatures, categoricalFeatures)
             value += addValue
-            # pointList.append((str(window.minusSeg)+',' + str(window), numericalFeatures, categoricalFeatures, addValue, value))
-        # f = estimationType+'.txt'
-        # filename = open(f, 'w')
-        # for p in pointList:
-        #     filename.write(str(p) + "\n")
-        # filename.close()
+            if path[i] in [58029, 59122, 62170, 6004, 52169]:
+                print(value)
+            pointList.append((str(window.midSeg), numericalFeatures[1], categoricalFeatures[1], addValue, value))
+        f = estimationType+'.txt'
+        filename = open(f, 'w')
+        for p in pointList:
+            filename.write(str(p) + "\n")
+        filename.close()
         return value
 
     def __findSegId(self, path, i):

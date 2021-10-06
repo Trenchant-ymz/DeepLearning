@@ -86,7 +86,7 @@ class ObdData(Dataset):
                             data_row[1] = list(map(float, data_row[1][1:-1].split(", ")))
                         elif self.label_dimension == 1:
                             # [0] for fuel; [1] for time
-                            data_row[1] = list(map(float, data_row[1][1:-1].split(", ")))[0]
+                            data_row[1] = list(map(float, data_row[1][1:-1].split(", ")))[0]*1000
 
                         data_row[2:] = map(int, map(float, data_row[2:]))
                         data_list.append(data_row)
@@ -152,7 +152,7 @@ def testDataloader():
     # test dataloader
     db = ObdData("normalized data", "test", percentage=20, label_dimension= 2,withoutElevation=False)
     x,y,c = next(iter(db))
-    print("data:", x, y, c)
+    # print("data:", x, y, c)
 
 
 
@@ -164,9 +164,9 @@ def testDataloader():
         std = torch.tensor(fuel_std).unsqueeze(1)
         return x_hat * std + mean
 
-    print(y)
-    print(c[0,...])
-    print(c[-1, ...])
+    # print(y)
+    # print(c[0,...])
+    # print(c[-1, ...])
 
     # print(x,y,d)
     loader = DataLoader(db, batch_size= 2, shuffle= False, num_workers=0)
@@ -175,6 +175,7 @@ def testDataloader():
         # y: label [batch, path length, window size, (label dimension)]
         # c: categorical features [batch, number of categorical features, path length, window size]
         print(x.shape, y.shape,c.shape)
+        print(y)
         t = torch.tensor([1, 0.01]).unsqueeze(0).to("cuda")
         print(t.shape)
         label = y[:, 0, 5 // 2]
