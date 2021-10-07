@@ -46,19 +46,19 @@ contains the statistical data of our data used in the pre-training stage, includ
    
 7. Some functions/classes used in [routing.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/routing.py).
    
-   (a). [osmgraph.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/osmgraph.py) defines some operations on an openstreepmap graph.
+   (a) [osmgraph.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/osmgraph.py) defines some operations on an openstreepmap graph.
    
-   (b). [routingAlgorithms.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/routingAlgorithms.py) 
+   (b) [routingAlgorithms.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/routingAlgorithms.py) 
    implements the Dijkstra and A * algorithm (from look-up-table or not).
    
-   (b). [window.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/window.py) the window of segments.
+   (b) [window.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/window.py) the window of segments.
 
-   (c). [windowNode.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/windowNode.py) defines nodes in the window_graph:
-   ![window graph](https://github.com/Trenchant-ymz/DeepLearning/blob/master/results/windowGraph.png).
+   (c) [windowNode.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/windowNode.py) defines nodes in the window_graph:
+   ![window graph](https://github.com/Trenchant-ymz/DeepLearning/blob/master/results/windowGraph.png)
    
-   (d). [lookUpTable.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/lookUpTable.py) defines the lookuptable which stores the fuel consumption of all segments.
+   (d) [lookUpTable.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/lookUpTable.py) defines the lookuptable which stores the fuel consumption of all segments.
 
-   (e). [spaitalShape.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/spaitalShape.py) defines some spatialShapes (e.g. point, box, etc.).
+   (e) [spaitalShape.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/spaitalShape.py) defines some spatialShapes (e.g. point, box, etc.).
    
 7. [detaPreprocessing.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/dataPreprocessing.py) preprocesses the origin OBD data.
 
