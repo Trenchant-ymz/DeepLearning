@@ -49,3 +49,6 @@ Create a new data_description.md
 
 ### 2021/5/14
 Add description of the 6 categorical features
+
+### 2021/5/14
+Using simulated data (generated from the physics model) to train the NN model
