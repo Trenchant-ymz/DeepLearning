@@ -2,7 +2,7 @@
 
 ## Environments:
 
-The code works well with [python](https://www.python.org/) 3.7, 
+The code works well with [python](https://www.python.org/) 3.8.5, 
 [pytorch](https://pytorch.org/) 1.8.1, 
 and **[osmnx](https://github.com/gboeing/osmnx)  0.16.1**.
 
@@ -26,31 +26,42 @@ contains the statistical data of our data used in the pre-training stage, includ
    
    
 ## Files
-1. In [ecoRouting.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/ecoRouting.py), a(n)
+1. In [routing.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/routing.py), a(n)
    shortest/ eco/ fastest route can be extracted given a request of a origin-destination pair and a bounding-box.
 2. [training and testing.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/training%20and%20testing.py) 
    is used to train/test a model with data in 
    folder [normalized data](https://github.com/Trenchant-ymz/DeepLearning/tree/master/normalized%20data).
    In the "main" function in the script, use mode="train" to train a model and save it to 
-   folder [pretrained model](https://github.com/Trenchant-ymz/DeepLearning/tree/master/pretrained%20model);
+   folder [pretrained models](https://github.com/Trenchant-ymz/DeepLearning/tree/master/pretrained%20models);
    use mode="test" to test the performance of the model;
    use mode="test" and output = True to test the model and save the ground truth / estimated value into 
    [prediction_result.csv](https://github.com/Trenchant-ymz/DeepLearning/blob/master/prediction_result.csv).
 3. [nets.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/nets.py) defines the deep learning estimation model.
-4. [obddata.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/obddata.py) defines the dataloader.
+4. [obddata.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/obddata.py) defines the dataloader for 
+   traing/validation/testing the estimation model.
 5. [estimationModel.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/estimationModel.py)
    loads the pretrained model from folder [pretrained models](https://github.com/Trenchant-ymz/DeepLearning/tree/master/pretrained%20models). 
 6. [edgeGdfPreprocessing.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/edgeGdfPreprocessing.py)
    extracts features of segments of the edge.gdf from the openstreetmap.
    
-7. [routingAlgorithms.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/routingAlgorithms.py),
-[pathGraph.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/pathGraph.py),
-   [osmgraph.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/osmgraph.py),
-   [spaitalShape.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/spaitalShape.py) and
-   [window.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/window.py)
-   are functions/classes used in [eco routing.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/eco%20routing.py).
+7. Some functions/classes used in [routing.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/routing.py).
+   
+   (a). [osmgraph.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/osmgraph.py) defines some operations on an openstreepmap graph.
+   
+   (b). [routingAlgorithms.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/routingAlgorithms.py) 
+   implements the Dijkstra and A * algorithm (from look-up-table or not).
+   
+   (b). [window.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/window.py) the window of segments.
 
+   (c). [windowNode.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/windowNode.py) defines nodes in the window graph.
+   
+   (d). [lookUpTable.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/lookUpTable.py) defines the lookuptable which stores the fuel consumption of all segments.
 
+   (e). [spaitalShape.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/spaitalShape.py) defines some spatialShapes (e.g. point, box, etc.).
+   
+7. [detaPreprocessing.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/dataPreprocessing.py) preprocesses the origin OBD data.
+
+8. [Get elevations from ArcGiS.ipynb](https://github.com/Trenchant-ymz/DeepLearning/blob/master/Get%20elevations%20from%20ArcGIS%20summarize%20elevation.ipynb) summarizes how to extract elevation data using ESRI Summarize Elevation API.
 
 Change Log
 -----
