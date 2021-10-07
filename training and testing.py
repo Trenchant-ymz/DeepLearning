@@ -75,9 +75,9 @@ else:
 # output_root = "/content/drive/MyDrive/Colab_Notebooks/DeepLearning/prediction_result.csv"
 # local
 #ckpt_path = "best_13d_fuel.mdl"
-ckpt_path = "best_13d_fuelSimulateDatamlDrop180.mdl"
-data_root = "model_data_newSep"
-#data_root = "normalized data"
+ckpt_path = "pretrained models/best_13d_fuelSimulateDatamlDrop180.mdl"
+#data_root = "model_data_newSep"
+data_root = "normalized data"
 #data_root = "DataDifferentiated"
 output_root = "prediction_result.csv"
 

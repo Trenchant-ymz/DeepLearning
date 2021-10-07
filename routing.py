@@ -12,7 +12,7 @@ import time
 from estimationModel import EstimationModel
 from lookUpTable import LookUpTable
 
-# Profiling: python -m cProfile -o profile.pstats ecoRouting.py
+# Profiling: python -m cProfile -o profile.pstats routing.py
 # Visualize profile: snakeviz profile.pstats
 
 
