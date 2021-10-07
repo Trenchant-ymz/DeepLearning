@@ -53,7 +53,8 @@ contains the statistical data of our data used in the pre-training stage, includ
    
    (b). [window.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/window.py) the window of segments.
 
-   (c). [windowNode.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/windowNode.py) defines nodes in the ![window graph](https://github.com/Trenchant-ymz/DeepLearning/blob/master/results/windowGraph.png).
+   (c). [windowNode.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/windowNode.py) defines nodes in the window_graph:
+   ![window graph](https://github.com/Trenchant-ymz/DeepLearning/blob/master/results/windowGraph.png).
    
    (d). [lookUpTable.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/lookUpTable.py) defines the lookuptable which stores the fuel consumption of all segments.
 
