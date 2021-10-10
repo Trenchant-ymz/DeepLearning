@@ -1,6 +1,9 @@
 import torch
 from nets import AttentionBlk
-
+from torch.utils.data import DataLoader
+import numpy as np
+import gc
+from tqdm import tqdm
 
 class EstimationModel:
     featureDim = 6
@@ -11,7 +14,7 @@ class EstimationModel:
         device = torch.device("cuda")
     else:
         device = torch.device("cpu")
-    device = torch.device("cuda")
+    device = torch.device("cpu")
     def __init__(self, outputOfModel):
         '''
 
@@ -22,6 +25,7 @@ class EstimationModel:
                                   num_heads=self.numOfHeads, output_dimension=self.outputDimension)
         self.modelAddress = "pretrained models/best_13d_" + self.outputOfModel + "SimulateDatamlDrop180.mdl"
         #self.modelAddress = "pretrained models/best_13d_" + self.outputOfModel + "SimulateData.mdl"
+
         self.model.load_state_dict(torch.load(self.modelAddress, map_location=self.device))
         self.model.to(self.device)
 
@@ -31,3 +35,20 @@ class EstimationModel:
         #print("numericalInputData", numericalInputData)
         #print("categoricalInputData", categoricalInputData)
         return self.model(numericalInputData.to(self.device), categoricalInputData.to(self.device)).item()
+
+    def predictList(self, dloader):
+        self.model.eval()
+        energyDictionary = dict()
+        for step, (idx, numericalInputData, categoricalInputData) in tqdm(enumerate(dloader)):
+            #print(idx.shape, numericalInputData.shape, categoricalInputData.shape)
+            with torch.no_grad():
+                pred = self.model(numericalInputData, categoricalInputData)
+                for i in range(len(idx)):
+                    energyDictionary[idx[i].item()] = pred[i].item()
+            del numericalInputData
+            del categoricalInputData
+            del idx
+            gc.collect()
+        return energyDictionary
+
+

@@ -47,6 +47,13 @@ class OsmGraph:
         nodes, _ = self.graphToGdfs()
         return nodes
 
+    def saveNodesLatLong(self, filename):
+        nodes = self.getNodes()
+        nodeLatLong = nodes[['y', 'x']]
+        nodeLatLong.columns = ['latitude', 'longitude']
+        nodeLatLong.to_csv(filename)
+        return
+
     def removeIsolateNodes(self):
         self.graph.remove_nodes_from(list(nx.isolates(self.graph)))
         #self.nodesGdf, self.edgesGdf = self.graphToGdfs()
@@ -58,6 +65,10 @@ class OsmGraph:
         origNode = self.getNearestNode(odPair.origin.yx())
         targetNode = self.getNearestNode(odPair.destination.yx())
         return origNode, targetNode
+
+    def plotGraph(self,filename):
+        fig, ax = ox.plot_graph(self.graph)
+        fig.savefig(filename)
 
     def plotPath(self, path, filename):
         fig, ax = ox.plot_graph_route(self.graph, path,node_size=5)

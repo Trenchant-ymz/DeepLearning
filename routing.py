@@ -11,13 +11,20 @@ import math
 import time
 from estimationModel import EstimationModel
 from lookUpTable import LookUpTable
+import gc
 
 # Profiling: python -m cProfile -o profile.pstats routing.py
 # Visualize profile: snakeviz profile.pstats
 
 
 class LocationRequest:
-    def __init__(self, origin, destination,boundingBox):
+    def __init__(self, origin, destination, distance):
+        '''
+
+        :param origin: (longitude, latitude)
+        :param destination: (longitude, latitude)
+        :param distance: max distance from murphy company (miles)
+        '''
         # (longitude, latitude)
         self.origin = origin
         # test
@@ -27,8 +34,13 @@ class LocationRequest:
         self.destination = destination
         #self.destination = Point(-93.230358, 44.973583)
 
+        # from murphy company (-93.22025, 44.9827), travel 70 miles
+        self.distance = distance*1609.34 # mile->km
+        bbox = ox.utils_geo.bbox_from_point((44.9827, -93.22025), dist=self.distance, project_utm = False, return_crs = False)
+        self.boundingBox = Box(bbox[-1], bbox[-2], bbox[-3], bbox[-4])
+        self.boundingBox = Box(-93.4975, -93.1850, 44.7458, 45.0045)
+        print(str(self.boundingBox))
         self.odPair = OdPair(self.origin, self.destination)
-        self.boundingBox = boundingBox
         self.temperature = 1
         self.mass = 23000
         # Monday
@@ -45,8 +57,8 @@ class ParameterForTableIni:
     def __init__(self, windowList, osmGraph, estMode = 'fuel'):
         self.temperatureList = [1]
         self.massList = [23000]
-        self.dayList = [1,2]
-        self.timeList = [1,3]
+        self.dayList = [1]
+        self.timeList = [3]
         self.windowList = windowList
         self.osmGraph = osmGraph
         self.estMode = estMode
@@ -56,28 +68,32 @@ class ParameterForTableIni:
 def main():
     # Murphy depot => Shakopee East (Depot)
     origin, destination = Point(-93.2219, 44.979), Point(-93.4620, 44.7903)
-    boundingBox = Box(-93.4975, -93.1850, 44.7458, 45.0045)
-
-    locationRequest = LocationRequest(origin, destination,boundingBox)
+    distance = 70
+    locationRequest = LocationRequest(origin, destination,distance)
     osmGraphInBbox = extractGraphOf(locationRequest.boundingBox)
     nodes, edges = osmGraphInBbox.graphToGdfs()
+    print(len(edges))
     extractElevation(nodes, edges)
     # for look-up-table method, the edges don't need to be preprocessed.
     edges = edgePreprocessing(nodes, edges, locationRequest.temperature, locationRequest.mass, locationRequest.dayOfTheWeek, locationRequest.timeOfTheDay)
     graphWithElevation = GraphFromGdfs(nodes, edges)
     graphWithElevation.removeIsolateNodes()
+    del nodes
+    del edges
+    del osmGraphInBbox
+    gc.collect()
     print('Graph loaded!')
     estMode = "fuel"
-    filename = "lookUpTableFor" + estMode
+    filename = "lookUpTable_test_multi"
     # train new table and save it to filename.pkl
-    #lookUpTable = trainNewLUTable(graphWithElevation, locationRequest, filename, mode=estMode)
+    lookUpTable = trainNewLUTable(graphWithElevation, locationRequest, filename, mode=estMode)
     # load table from filename.pkl
     #lookUpTable = LookUpTable(locationRequest, filename)
     #windowList = graphWithElevation.extractAllWindows(4)
     #energyEst = lookUpTable.extractValue(windowList[0])
     #print(energyEst)
-    #print(len(lookUpTable))
-    lookUpTable = None
+    print(len(lookUpTable))
+    #lookUpTable = None
     #print(windowList[0], energyEst)
     # shortest route
     # shortestNodePath = findShortestPath(graphWithElevation, locationRequest)
@@ -97,6 +113,8 @@ def trainNewLUTable(graphWithElevation, locationRequest, filename, mode='fuel'):
     windowList = graphWithElevation.extractAllWindows(4)
     print(len(windowList))
     paramForTable = ParameterForTableIni(windowList, graphWithElevation, mode)
+    del windowList
+    gc.collect()
     lookUpTable = LookUpTable(locationRequest, filename, generateNewTable=True, parameterForTableIni=paramForTable)
     return lookUpTable
 
@@ -121,9 +139,8 @@ def extractElevation(nodes, edges):
     extractEdgesElevation(nodes, edges)
 
 
-
 def extractNodesElevation(nodes):
-    nodesElevation = pd.read_csv("nodesWithElevation.csv", index_col=0)
+    nodesElevation = pd.read_csv(os.path.join("statistical data", "nodesWithElevation.csv"), index_col=0)
     nodes['indexId'] = nodes.index
     nodes['elevation'] = nodes.apply(lambda x: nodesElevation.loc[x['indexId'], 'MeanElevation'], axis=1)
 

@@ -114,8 +114,8 @@ def mape_loss(label, pred):
 def timeEstimation(velocityProfile, length):
     '''
 
-    :param velocityProfile: a list of velocity profile (m/s)
-    :param length: m
+    :param velocityProfile: a list of velocity profile (m/s) # [batch size, lengthOfVelocityProfile]
+    :param length: m # [batch size]
     :return: time: s
     '''
     lengthOfOneSubSegment = length/lengthOfVelocityProfile

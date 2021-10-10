@@ -16,6 +16,7 @@ def edgePreprocessing(nodesGdf, edgesGdf,temperature, mass,dayOfTheWeek, timeOfT
         edgesGdf['elevationChange'] = edgesGdf.apply(lambda x: x['vElevation']-x['uElevation'], axis=1)
     else:
         segmentElevationChange = np.load('statistical data/segmentElevationChange.npy', allow_pickle=True).item()
+        print(len(segmentElevationChange))
         edgesGdf['elevationChange'] = edgesGdf.apply(lambda x: segmentElevationChange[(x.u, x.v)], axis=1)
 
     edgesGdf['elevationChange'] = (edgesGdf['elevationChange'] + 0.00450470150885644) / 8.62149031019689

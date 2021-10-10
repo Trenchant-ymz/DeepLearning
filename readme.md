@@ -99,3 +99,7 @@ Reducing time complexity of eco-routing algorithm from 12 minutes to 140s.
 
 ### 2021/10/6
 version 5.5: Change the unit of fuel from liter to Milliliter. Remove the incorrect map-matching results.
+
+### 2021/10/10
+version 5.6: For look-up-table method, extract the features of all the windows first and then feed them together to the estimation model.
+Reducing time complexity of look-up-table generation (for 1 bin) from 3900s to 175s.
