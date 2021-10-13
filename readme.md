@@ -64,6 +64,9 @@ contains the statistical data of our data used in the pre-training stage, includ
 
 8. [Get elevations from ArcGiS.ipynb](https://github.com/Trenchant-ymz/DeepLearning/blob/master/Get%20elevations%20from%20ArcGIS%20summarize%20elevation.ipynb) summarizes how to extract elevation data using ESRI Summarize Elevation API.
 
+9. [multiTaskPINN.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/multiTaskPINN.py): PiGat for energy estimation.
+![Architecture of PiGat](https://github.com/Trenchant-ymz/DeepLearning/blob/master/results/pigat.png)
+
 Change Log
 -----
 
@@ -103,3 +106,6 @@ version 5.5: Change the unit of fuel from liter to Milliliter. Remove the incorr
 ### 2021/10/10
 version 5.6: For look-up-table method, extract the features of all the windows first and then feed them together to the estimation model.
 Reducing time complexity of look-up-table generation (for 1 bin) from 3900s to 175s.
+
+### 2021/10/13
+version 5.7: PiGat for energy estimation
