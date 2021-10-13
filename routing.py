@@ -9,7 +9,7 @@ import plotly
 import osmnx as ox
 import math
 import time
-from estimationModel import EstimationModel
+from estimationModel import EstimationModel, MultiTaskEstimationModel
 from lookUpTable import LookUpTable
 import gc
 
@@ -84,7 +84,7 @@ def main():
     gc.collect()
     print('Graph loaded!')
     estMode = "fuel"
-    filename = "lookUpTable_test_multi"
+    filename = "lookUpTable_test"
     # train new table and save it to filename.pkl
     lookUpTable = trainNewLUTable(graphWithElevation, locationRequest, filename, mode=estMode)
     # load table from filename.pkl
@@ -105,7 +105,7 @@ def main():
     # fastest route
     #fastestPath, shortestTime, fastestEdgePath = findFastestPathAndCalTime(graphWithElevation, locationRequest)
     #calAndPrintPathAttributes(graphWithElevation, fastestEdgePath, "fastestPath")
-    # plotRoutes([ecoEdgePath,fastestEdgePath,shortestPath], edges, ['green','red','blue'], ['eco route','shortest time route','shortest distance route'], 'resultml')
+    plotRoutes([ecoEdgePath], graphWithElevation.getEdges(), ['green'], ['eco route'], 'resultml')
     #graphWithElevation.plotPathList([shortestNodePath, ecoRoute, fastestPath],'routing result.pdf')
 
 
@@ -140,7 +140,7 @@ def extractElevation(nodes, edges):
 
 
 def extractNodesElevation(nodes):
-    nodesElevation = pd.read_csv(os.path.join("statistical data", "nodesWithElevation.csv"), index_col=0)
+    nodesElevation = pd.read_csv(os.path.join("statistical data", "nodesWithElevationSmall.csv"), index_col=0)
     nodes['indexId'] = nodes.index
     nodes['elevation'] = nodes.apply(lambda x: nodesElevation.loc[x['indexId'], 'MeanElevation'], axis=1)
 

@@ -10,15 +10,22 @@ import csv
 import time
 import visdom
 from tqdm import tqdm
+from torchinterp1d import Interp1d
+import math
+
 
 # Before running the code, run 'python -m visdom.server' in the terminal to open visdom panel.
 
 # divide a segment equally into n parts according to the length
-lengthOfVelocityProfile = 10
-
-# m
+lengthOfVelocityProfile = 20
+tParts = 20 # divide time into several parts
+# mean std
 meanOfSegmentLength = 607.8692133
 stdOfSegmentLength = 899.7448693
+
+meanOfMass = 23204.01011
+stdOfMass = 8225.790208
+
 
 omega_time = 0.5
 omega_fuel = 0.5
@@ -67,7 +74,7 @@ if pace_train>train_path_length:
     print("pace train has been changed to:", pace_train)
 if pace_test>test_path_length:
     pace_test = test_path_length
-    print("pace test has been changed to:",pace_test)
+    print("pace test has been changed to:", pace_test)
 
 use_cuda = torch.cuda.is_available()
 if use_cuda:
@@ -78,7 +85,7 @@ else:
 
 # local
 ckpt_path = "best13dMultiTask.mdl"
-data_root = "model_data_newSep"
+data_root = "model_data_newOct"
 output_root = "prediction_result.csv"
 
 # load data
@@ -111,27 +118,87 @@ def mape_loss(label, pred):
     return mape
 
 
-def timeEstimation(velocityProfile, length):
-    '''
+def vd2vt(velocityProfile, length):
+    lengthOfEachPart = length / (velocityProfile.shape[1] - 1)
+    averageV = velocityProfile[:,0:-1] + velocityProfile[:,1:]
+    tOnSubPath = (2 * lengthOfEachPart).unsqueeze(-1) / averageV
+    tAxis = torch.matmul(tOnSubPath, torch.triu(torch.ones(tOnSubPath.shape[1],tOnSubPath.shape[1])).to(device))
+    tAxis = torch.cat([torch.zeros([tOnSubPath.shape[0],1]).to(device),tAxis],dim=-1)
+    timeSum = tAxis[:, -1]
+    tNew = torch.arange(tParts).unsqueeze(0).to(device) * timeSum.unsqueeze(-1) / (tParts - 1)
+    #print('tAxis',tAxis,'velocityProfile',velocityProfile, 'tNew',tNew)
+    intetpResult = None
+    intetpResult = Interp1d()(tAxis, velocityProfile, tNew, intetpResult).to(device)
+    ##plot interpolation
+    # x = tAxis.cpu().numpy()
+    # y = velocityProfile.cpu().numpy()
+    # xnew = tNew.cpu().numpy()
+    # yq_cpu = intetpResult.cpu().numpy()
+    # print(x.T, y.T, xnew.T, yq_cpu.T)
+    # plt.plot(x.T, y.T, '-', xnew.T, yq_cpu.T, 'x')
+    # plt.grid(True)
+    # plt.show()
+    return intetpResult,tNew
 
-    :param velocityProfile: a list of velocity profile (m/s) # [batch size, lengthOfVelocityProfile]
-    :param length: m # [batch size]
-    :return: time: s
-    '''
-    lengthOfOneSubSegment = length/lengthOfVelocityProfile
-    # need to be revised
-    estTime = torch.sum(lengthOfOneSubSegment/velocityProfile)
-    return estTime
 
 
-def fuelEstimation(velocityProfile, length):
-    '''
+def timeEstimation(tNew):
+    return tNew[:, -1]
 
-    :param velocityProfile: a list of velocity profile (m/s)
-    :param length: m
-    :return: fuel: liter
-    '''
-    return 0
+
+def fuelEstimation(v, tNew,m):
+    acc = vt2a(v, tNew)
+    fuel = vt2fuel(v, acc, tNew,m)
+    return fuel
+
+def vt2a(v,t):
+    # calculate a using 1-3, 2-4
+    dv = v[:, 2:] - v[:, 0:-2]
+    dt = t[:, 2].unsqueeze(-1)
+    aMiddle = dv / dt
+    dvHead = v[:, 1] - v[:, 0]
+    dtSingle = t[:, 1]
+    aHead = (dvHead / dtSingle).unsqueeze(-1)
+    dvTail = v[:, -1] - v[:, -2]
+    aTail = (dvTail / dtSingle).unsqueeze(-1)
+    a = torch.cat([aHead, aMiddle, aTail], dim=-1)
+    return a
+
+
+def power(v,a,m,theta,rho):
+    R = 0.5003  # wheel radius (m)
+    g = 9.81  # gravitational accel (m/s^2)
+    A = 10.5  # frontal area (m^2)
+    Cd = 0.5  # drag coefficient
+    Crr = 0.0067  # rolling resistance
+    Iw = 10  # wheel inertia (kg m^2)
+    Nw = 10  # number of wheels
+
+    Paccel = (m * a * v).clamp(0)
+    Pascent =(m * g * torch.sin(torch.tensor([theta * (math.pi / 180)]).to(device)) * v).clamp(0)
+    Pdrag = (0.5 * rho * Cd * A * v ** 3).clamp(0)
+    Prr = (m * g * Crr * v).clamp(0)
+    Pinert = (Iw * Nw * (a / R) * v).clamp(0)
+    pauxA = torch.zeros(Pinert.shape).to(device)
+    pauxB = torch.ones(Pinert.shape).to(device)*1000
+    Paux = torch.where(v>0.1, pauxA, pauxB).to(device)
+    P = (Paccel + Pascent + Pdrag + Prr + Pinert + Paux) / 1000
+    return P
+
+
+def vt2fuel(v,a,t,m):
+
+    #m = 10000  # mass (kg)
+    rho = 1.225  # density of air (kg/m^3)
+    theta = 0  # road grade (degrees)
+    fc = 40.3  # fuel consumption (kWh/gal) # Diesel ~40.3 kWh/gal
+    eff = 0.56  # efficiency of engine
+
+    P = power(v, a, m, theta, rho)
+    P_avg = (P[:, :-1] + P[:, 1:]) / 2
+    f = P_avg / (fc * eff) * t[:, 1].unsqueeze(-1) / 3600
+    #from galon => ml
+    return torch.sum(f, dim=1)*3.7854*1000
 
 
 def eval(model, loader, output = False):
@@ -168,13 +235,15 @@ def eval(model, loader, output = False):
                 c_segment = c[:, :, i, :]
                 # [batch size, output dimension]
                 #print(x_segment.shape,c_segment.shape)
-                velocityProfile = model(x_segment, c_segment)
+                velocityProfile = model(x_segment, c_segment)+0.1
+
                 # extract the length of this segment
                 # [batch size]
                 length = denormalize(x_segment[:, window_sz // 2, 4], meanOfSegmentLength, stdOfSegmentLength)
-                pred_Time = timeEstimation(velocityProfile, length)
-                pred_Fuel = fuelEstimation(velocityProfile, length)
-
+                m = denormalize(x_segment[:, window_sz // 2, 1], meanOfMass, stdOfMass).unsqueeze(-1)
+                v, t = vd2vt(velocityProfile, length)
+                pred_Time = timeEstimation(t)
+                pred_Fuel = fuelEstimation(v, t, m)
                 # [batch size, output dimension]
                 pred_segment[:, 0] += pred_Fuel
                 pred_segment[:, 1] += pred_Time
@@ -182,8 +251,8 @@ def eval(model, loader, output = False):
 
                 #pred_segment_denormalized += denormalize(pred)
                 # [batch size, output dimension]
-                t = torch.tensor([1, 0.01]).unsqueeze(0).to(device)
-                label = y[:, i, window_sz // 2] * t
+                t = torch.tensor([1000, 1]).unsqueeze(0).to(device)
+                label = y[:, i, window_sz // 2]*t
 
                 # [batch size, output dimension]
                 label_segment += label
@@ -191,10 +260,11 @@ def eval(model, loader, output = False):
 
                 if output:
                     for j in range(y.shape[0]):
-                        writer.writerow([id, np.array(label[j, 0].cpu()), np.array(label[j, 1].cpu()), np.array(pred[j, 0].cpu()), np.array(pred[j, 1].cpu())])
+                        writer.writerow([id, np.array(label[j, 0].cpu()), np.array(label[j, 1].cpu()), np.array(pred_Fuel[j].cpu()), np.array(pred_Time[j].cpu())])
                         id += 1
-            mse_fuel = F.mse_loss(label_segment[:0], pred_segment[:0])*y.shape[0]
-            mse_time = F.mse_loss(label_segment[:1], pred_segment[:1]) * y.shape[0]
+
+            mse_fuel = F.mse_loss(label_segment[:,0], pred_segment[:,0])*y.shape[0]
+            mse_time = F.mse_loss(label_segment[:,1], pred_segment[:,1]) * y.shape[0]
             loss_mse += omega_fuel * mse_fuel + omega_time * mse_time
             #print(label_segment, pred_segment, mape_loss(label_segment, pred_segment))
             loss_mape_fuel += mape_loss(label_segment[:,0], pred_segment[:,0])*y.shape[0]
@@ -264,32 +334,41 @@ def train():
                 # [batch, categorical_dim, window size]
                 c_segment = c[:, :, i, :]
                 # [batch size, lengthOfVelocityProfile]
-                velocityProfile = model(x_segment, c_segment)
+                # offset to make sure the average velocity is higher than 0
+                velocityProfile = model(x_segment, c_segment)+0.1
+
                 # extract the length of this segment
                 # [batch size]
                 length = denormalize(x_segment[:, window_sz // 2, 4], meanOfSegmentLength, stdOfSegmentLength)
-                pred_Time = timeEstimation(velocityProfile, length)
-                pred_Fuel = fuelEstimation(velocityProfile, length)
-
+                m = denormalize(x_segment[:, window_sz // 2, 1], meanOfMass, stdOfMass).unsqueeze(-1)
+                #print(velocityProfile,length)
+                v,t = vd2vt(velocityProfile, length)
+                #print(v,t)
+                pred_Time = timeEstimation(t)
+                pred_Fuel = fuelEstimation(v,t, m)
+                #print('pred_Time',pred_Time,pred_Fuel,pred_Time.shape, pred_Fuel.shape)
                 # [batch size, output dimension]
                 pred_path[:, 0] += pred_Fuel
                 pred_path[:, 1] += pred_Time
                 #pred_segment_denormalized += denormalize(pred)
-
                 # [batch size, output dimension]
                 # time*0.01 so that time and fuel are in the similar unit
-                t = torch.tensor([1, 0.01]).unsqueeze(0).to(device)
+                t = torch.tensor([1000, 1]).unsqueeze(0).to(device)
                 label = y[:, i, window_sz // 2]*t
 
 
                 # [batch size, output dimension]
                 label_path += label
+                #print('pred_path',pred_path[:,0], label_path[:,0])
                 #label_segment_denormalized += denormalize(label)
-            loss_fuel = criterion(label_path[:0], pred_path[:0])
-            loss_time = criterion(label_path[:1], pred_path[:1])
+            #print('pred_path_total',pred_path[:,0], label_path[:,0])
+            #print('pred_path_total', pred_path[:, 1], label_path[:, 1])
+            loss_fuel = criterion(label_path[:,0], pred_path[:,0])
+            loss_time = criterion(label_path[:,1], pred_path[:,1])
             #loss = mape_loss(label_path, pred_path)
-            #print(loss)
+            #print('loss',loss_fuel,loss_time)
             loss = omega_fuel*loss_fuel + omega_time*loss_time
+            #print(loss)
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
@@ -302,7 +381,7 @@ def train():
         loss_mape_time = mape_loss(label_path[:, 1], pred_path[:, 1])
 
         viz.line([loss_mape_fuel.item()], [global_step], win='train_fuel_mape', update='append')
-        viz.line([loss_mape_time.item()], [global_step], win='loss_mape_time', update='append')
+        viz.line([loss_mape_time.item()], [global_step], win='train_time_mape', update='append')
 
         schedule.step(loss)
         learning_rate = optimizer.state_dict()['param_groups'][0]['lr']
@@ -346,7 +425,7 @@ def test(output = False):
     print("number of parameters:", p)
     test_mse, test_fuel_mape, test_time_mape = eval(model, test_loader, output = output)
     print("test_mape_fuel(%):", np.array(test_fuel_mape.cpu()) * 100)
-    print("test_mape_fuel(%):", np.array(test_time_mape.cpu()) * 100)
+    print("test_mape_time(%):", np.array(test_time_mape.cpu()) * 100)
     print("test_mse:", np.array(test_mse.cpu()))
 
 
@@ -364,8 +443,8 @@ def main(mode, output = False):
 
 if __name__ == '__main__':
     #main("test")
-    #main("test", output = True)
-    main("train")
+    main("test", output = True)
+    #main("train")
 
 # 602 parameters
 # test_length_path = [1,2,5,10,20,50,100,200,500]

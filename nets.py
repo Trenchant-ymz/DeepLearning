@@ -100,6 +100,8 @@ class AttentionBlk(nn.Module):
         x_output_ff = self.feed_forward(x_output.squeeze(0))
         x_output = self.norm(x_output.squeeze(0) + x_output_ff)
         x_output = self.linear(x_output)
+        # offset for velocity profile estimation to avoid 0 velocity
+        # return F.relu(x_output)+0.1
         return F.relu(x_output)
 
 def testNet():
