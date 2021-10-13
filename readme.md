@@ -108,4 +108,4 @@ version 5.6: For look-up-table method, extract the features of all the windows f
 Reducing time complexity of look-up-table generation (for 1 bin) from 3900s to 175s.
 
 ### 2021/10/13
-version 5.7: PiGat for energy estimation
+version 6.0: PiGat for energy estimation
