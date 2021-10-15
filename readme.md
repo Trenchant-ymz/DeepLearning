@@ -109,3 +109,6 @@ Reducing time complexity of look-up-table generation (for 1 bin) from 3900s to 1
 
 ### 2021/10/13
 version 6.0: PiGat for energy estimation
+
+### 2021/10/14
+version 6.1: Incorporate mass into the physics equations in PiGAT.

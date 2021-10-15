@@ -67,7 +67,9 @@ class LookUpTable:
                         gc.collect()
                         #dloader = DataLoader(db, batch_size=256, num_workers=0)
                         energyOfWindows = parameterForTableIni.estimationModel.model(numericalFeatures, categoricalFeatures).squeeze(1).tolist()
-                        print(energyOfWindows.shape)
+                        # mutitask version
+                        #energyOfWindows = parameterForTableIni.estimationModel.predict(numericalFeatures,categoricalFeatures).tolist()
+                        #print(energyOfWindows.shape)
                         for i in range(len(energyOfWindows)):
                             table[tableRequest][i] = energyOfWindows[i]
 

@@ -59,8 +59,7 @@ head_number = 1
 
 # length of path used for training/validation
 train_path_length = 10
-# length of path used for test
-test_path_length = 1
+
 
 # window size 3 best
 window_sz = 3
@@ -72,9 +71,7 @@ pace_test = pace_train
 if pace_train>train_path_length:
     pace_train = train_path_length
     print("pace train has been changed to:", pace_train)
-if pace_test>test_path_length:
-    pace_test = test_path_length
-    print("pace test has been changed to:", pace_test)
+
 
 use_cuda = torch.cuda.is_available()
 if use_cuda:
@@ -84,20 +81,12 @@ else:
     device = torch.device("cpu")
 
 # local
-ckpt_path = "best13dMultiTask.mdl"
+ckpt_path = "multitaskModels/multiTaskVD.mdl"
 data_root = "model_data_newOct"
 output_root = "prediction_result.csv"
 
 # load data
-train_db = ObdData(root=data_root, mode = "train", percentage=10, window_size=window_sz, \
-                   path_length=train_path_length, label_dimension=label_dimension, pace=pace_train, withoutElevation=False)
-val_db = ObdData(root=data_root, mode="val", percentage=10, window_size=window_sz, \
-                 path_length=train_path_length, label_dimension=label_dimension, pace=pace_test, withoutElevation=False)
-test_db = ObdData(root=data_root, mode="test", percentage=10, window_size=window_sz, \
-                  path_length=test_path_length, label_dimension=label_dimension, pace=pace_test, withoutElevation=False)
-train_loader = DataLoader(train_db, batch_size=batchsz, num_workers=0)
-val_loader = DataLoader(val_db, batch_size=batchsz, num_workers=0)
-test_loader = DataLoader(test_db, batch_size=batchsz, num_workers=0)
+
 
 
 def denormalize(normalized, mean, std):
@@ -117,8 +106,8 @@ def mape_loss(label, pred):
     # print(p, l, loss_energy)
     return mape
 
-
-def vd2vt(velocityProfile, length):
+#version 1 vd=>vt=>Same time interpolation
+def vd2vtWithInterpolation(velocityProfile, length):
     lengthOfEachPart = length / (velocityProfile.shape[1] - 1)
     averageV = velocityProfile[:,0:-1] + velocityProfile[:,1:]
     tOnSubPath = (2 * lengthOfEachPart).unsqueeze(-1) / averageV
@@ -140,13 +129,43 @@ def vd2vt(velocityProfile, length):
     # plt.show()
     return intetpResult,tNew
 
+#version 1 vd=>vt
+def vd2vt(velocityProfile, length):
+    '''
+
+    :param velocityProfile: velocityProfile: velocity profiel (uniform length sampling)
+    :param length: length: total length of the segment
+    :return: tAxis: the axis of time of the velocity profile
+    '''
+    lengthOfEachPart = length / (velocityProfile.shape[1] - 1)
+    averageV = velocityProfile[:,0:-1] + velocityProfile[:,1:]
+    tOnSubPath = (2 * lengthOfEachPart).unsqueeze(-1) / averageV
+    tAxis = torch.matmul(tOnSubPath, torch.triu(torch.ones(tOnSubPath.shape[1],tOnSubPath.shape[1])).to(device))
+    tAxis = torch.cat([torch.zeros([tOnSubPath.shape[0],1]).to(device),tAxis],dim=-1)
+    return velocityProfile,tAxis
+
+
+#version 1 vt=>calculate t
+def vt2t(velocityProfile, length):
+    '''
+
+    :param velocityProfile: velocity profiel (uniform time sampling)
+    :param length: total length of the segment
+    :return: tAxis: the axis of time of the velocity profile
+    '''
+    mul = torch.cat([torch.ones([1, 1]), 2 * torch.ones([velocityProfile.shape[1] - 2, 1]),\
+                       torch.ones([1, 1])], dim=0).to(device)
+    vAverage = torch.matmul(velocityProfile, mul) / 2
+    tForOnePart = length.unsqueeze(-1) / vAverage
+    tAxis = torch.arange(velocityProfile.shape[1]).unsqueeze(0).to(device) * tForOnePart
+    return velocityProfile,tAxis
 
 
 def timeEstimation(tNew):
     return tNew[:, -1]
 
 
-def fuelEstimation(v, tNew,m):
+def fuelEstimation(v, tNew, m):
     acc = vt2a(v, tNew)
     fuel = vt2fuel(v, acc, tNew,m)
     return fuel
@@ -198,7 +217,7 @@ def vt2fuel(v,a,t,m):
     P_avg = (P[:, :-1] + P[:, 1:]) / 2
     f = P_avg / (fc * eff) * t[:, 1].unsqueeze(-1) / 3600
     #from galon => ml
-    return torch.sum(f, dim=1)*3.7854*1000
+    return torch.sum(f, dim=1)*3.7854*100
 
 
 def eval(model, loader, output = False):
@@ -209,6 +228,8 @@ def eval(model, loader, output = False):
     :param output: output the estimation result or not
     :return: MAPE of energy, average MSE of energy and time
     """
+
+
     if output:
         csvFile = open(output_root, "w")
         writer = csv.writer(csvFile)
@@ -241,7 +262,7 @@ def eval(model, loader, output = False):
                 # [batch size]
                 length = denormalize(x_segment[:, window_sz // 2, 4], meanOfSegmentLength, stdOfSegmentLength)
                 m = denormalize(x_segment[:, window_sz // 2, 1], meanOfMass, stdOfMass).unsqueeze(-1)
-                v, t = vd2vt(velocityProfile, length)
+                v, t = vt2t(velocityProfile, length)
                 pred_Time = timeEstimation(t)
                 pred_Fuel = fuelEstimation(v, t, m)
                 # [batch size, output dimension]
@@ -251,7 +272,7 @@ def eval(model, loader, output = False):
 
                 #pred_segment_denormalized += denormalize(pred)
                 # [batch size, output dimension]
-                t = torch.tensor([1000, 1]).unsqueeze(0).to(device)
+                t = torch.tensor([100, 1]).unsqueeze(0).to(device)
                 label = y[:, i, window_sz // 2]*t
 
                 # [batch size, output dimension]
@@ -276,6 +297,14 @@ def eval(model, loader, output = False):
 
 
 def train():
+    train_db = ObdData(root=data_root, mode="train", percentage=10, window_size=window_sz,\
+                       path_length=train_path_length, label_dimension=label_dimension, pace=pace_train,
+                       withoutElevation=False)
+    val_db = ObdData(root=data_root, mode="val", percentage=10, window_size=window_sz,\
+                     path_length=train_path_length, label_dimension=label_dimension, pace=pace_test,
+                     withoutElevation=False)
+    train_loader = DataLoader(train_db, batch_size=batchsz, num_workers=0)
+    val_loader = DataLoader(val_db, batch_size=batchsz, num_workers=0)
     viz = visdom.Visdom()
     # Create a new model or load an existing one.
     model = AttentionBlk(feature_dim=feature_dimension,embedding_dim=[4,2,2,2,2,4,4],num_heads=head_number,output_dimension=lengthOfVelocityProfile)
@@ -342,7 +371,7 @@ def train():
                 length = denormalize(x_segment[:, window_sz // 2, 4], meanOfSegmentLength, stdOfSegmentLength)
                 m = denormalize(x_segment[:, window_sz // 2, 1], meanOfMass, stdOfMass).unsqueeze(-1)
                 #print(velocityProfile,length)
-                v,t = vd2vt(velocityProfile, length)
+                v,t = vt2t(velocityProfile, length)
                 #print(v,t)
                 pred_Time = timeEstimation(t)
                 pred_Fuel = fuelEstimation(v,t, m)
@@ -353,7 +382,7 @@ def train():
                 #pred_segment_denormalized += denormalize(pred)
                 # [batch size, output dimension]
                 # time*0.01 so that time and fuel are in the similar unit
-                t = torch.tensor([1000, 1]).unsqueeze(0).to(device)
+                t = torch.tensor([100, 1]).unsqueeze(0).to(device)
                 label = y[:, i, window_sz // 2]*t
 
 
@@ -405,7 +434,7 @@ def train():
     print("best_epoch:", best_epoch, "best_mse:", np.array(best_mse.cpu()))
 
 
-def test(output = False):
+def test(test_path_length, test_pace, output = False):
     """
 
     :param output: "True" -> output the estimation results to output_root
@@ -413,6 +442,11 @@ def test(output = False):
     """
 
     # load an existing model.
+    test_db = ObdData(root=data_root, mode="test", percentage=10, window_size=window_sz,\
+                      path_length=test_path_length, label_dimension=label_dimension, pace=test_pace,
+                      withoutElevation=False)
+
+    test_loader = DataLoader(test_db, batch_size=batchsz, num_workers=0)
     model = AttentionBlk(feature_dim=feature_dimension, embedding_dim=[4,2,2,2,2,4,4], num_heads=head_number, output_dimension=lengthOfVelocityProfile)
     if os.path.exists(ckpt_path):
         print('Reloading model parameters..')
@@ -420,9 +454,9 @@ def test(output = False):
     else:
         print('Error: no existing model')
     model.to(device)
-    print(model)
-    p = sum(map(lambda p: p.numel(), model.parameters()))
-    print("number of parameters:", p)
+    #print(model)
+    #p = sum(map(lambda p: p.numel(), model.parameters()))
+    #print("number of parameters:", p)
     test_mse, test_fuel_mape, test_time_mape = eval(model, test_loader, output = output)
     print("test_mape_fuel(%):", np.array(test_fuel_mape.cpu()) * 100)
     print("test_mape_time(%):", np.array(test_time_mape.cpu()) * 100)
@@ -437,8 +471,16 @@ def main(mode, output = False):
     if mode == "train":
         train()
     elif mode == "test":
-        test(output = output)
-
+        # length of path used for test
+        test_path_length_list = [1,2,5,10,20,50,100,200]
+        for length in test_path_length_list:
+            pace_test = pace_train
+            if pace_test > length:
+                pace_test = length
+                print("pace test has been changed to:", pace_test)
+            print("test path length:",length)
+            test(length,pace_test, output = output)
+    return
 
 
 if __name__ == '__main__':

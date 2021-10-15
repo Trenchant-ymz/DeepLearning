@@ -75,22 +75,13 @@ else:
 # output_root = "/content/drive/MyDrive/Colab_Notebooks/DeepLearning/prediction_result.csv"
 # local
 #ckpt_path = "best_13d_fuel.mdl"
-ckpt_path = "pretrained models/best_13d_fuelSimulateDatamlDrop180.mdl"
+ckpt_path = "pretrained models/gattimeOct.mdl"
 data_root = "model_data_newOct"
 #data_root = "normalized data"
 #data_root = "DataDifferentiated"
 output_root = "prediction_result.csv"
 
-# load data
-train_db = ObdData(root=data_root,mode = "train",percentage=10, window_size=window_sz,\
-                   path_length=train_path_length, label_dimension=output_dimension, pace=pace_train,withoutElevation=False)
-val_db = ObdData(root=data_root,mode="val",percentage=10,window_size=window_sz,\
-                 path_length=train_path_length, label_dimension=output_dimension, pace=pace_test,withoutElevation=False)
-test_db = ObdData(root=data_root,mode="test",percentage=10,window_size=window_sz,\
-                  path_length=test_path_length, label_dimension=output_dimension, pace=pace_test,withoutElevation=False)
-train_loader = DataLoader(train_db, batch_size=batchsz, num_workers=0)
-val_loader = DataLoader(val_db, batch_size=batchsz, num_workers=0)
-test_loader = DataLoader(test_db, batch_size=batchsz, num_workers=0)
+
 
 
 def denormalize(x_hat):
@@ -189,6 +180,15 @@ def eval(model, loader, output = False):
 
 
 def train():
+    # load data
+    train_db = ObdData(root=data_root, mode="train", percentage=10, window_size=window_sz,\
+                       path_length=train_path_length, label_dimension=output_dimension, pace=pace_train,
+                       withoutElevation=False)
+    val_db = ObdData(root=data_root, mode="val", percentage=10, window_size=window_sz,\
+                     path_length=train_path_length, label_dimension=output_dimension, pace=pace_test,
+                     withoutElevation=False)
+    train_loader = DataLoader(train_db, batch_size=batchsz, num_workers=0)
+    val_loader = DataLoader(val_db, batch_size=batchsz, num_workers=0)
     viz = visdom.Visdom()
     # Create a new model or load an existing one.
     model = AttentionBlk(feature_dim=feature_dimension,embedding_dim=[4,2,2,2,2,4,4],num_heads=head_number,output_dimension=output_dimension)
@@ -291,12 +291,19 @@ def train():
     print("best_epoch:", best_epoch, "best_mape(%):", np.array(best_mape.cpu())*100, "best_mse:", np.array(best_mse.cpu()))
 
 
-def test(output = False):
+def test(test_path_length, test_pace, output = False):
     """
 
     :param output: "True" -> output the estimation results to output_root
     :return:
     """
+
+    # load an existing model.
+    test_db = ObdData(root=data_root, mode="test", percentage=10, window_size=window_sz,\
+                      path_length=test_path_length, label_dimension=output_dimension, pace=test_pace,
+                      withoutElevation=False)
+
+    test_loader = DataLoader(test_db, batch_size=batchsz, num_workers=0)
 
     # load an existing model.
     model = AttentionBlk(feature_dim=feature_dimension,embedding_dim=[4,2,2,2,2,4,4],num_heads=head_number,output_dimension=output_dimension)
@@ -306,9 +313,9 @@ def test(output = False):
     else:
         print('Error: no existing model')
     model.to(device)
-    print(model)
+    #print(model)
     p = sum(map(lambda p: p.numel(), model.parameters()))
-    print("number of parameters:", p)
+    #print("number of parameters:", p)
     test_mape, test_mse = eval(model, test_loader, output = output)
     print("test_mape(%):", np.array(test_mape.cpu()) * 100)
     print("test_mse:", np.array(test_mse.cpu()))
@@ -322,7 +329,16 @@ def main(mode, output = False):
     if mode == "train":
         train()
     elif mode == "test":
-        test(output = output)
+        # length of path used for test
+        test_path_length_list = [1,2,5,10,20,50,100,200]
+        for length in test_path_length_list:
+            pace_test = pace_train
+            if pace_test > length:
+                pace_test = length
+                print("pace test has been changed to:", pace_test)
+            print("test path length:",length)
+            test(length,pace_test, output = output)
+    return
 
 
 

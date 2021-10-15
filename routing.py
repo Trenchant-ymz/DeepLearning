@@ -38,7 +38,7 @@ class LocationRequest:
         self.distance = distance*1609.34 # mile->km
         bbox = ox.utils_geo.bbox_from_point((44.9827, -93.22025), dist=self.distance, project_utm = False, return_crs = False)
         self.boundingBox = Box(bbox[-1], bbox[-2], bbox[-3], bbox[-4])
-        self.boundingBox = Box(-93.4975, -93.1850, 44.7458, 45.0045)
+        #self.boundingBox = Box(-93.4975, -93.1850, 44.7458, 45.0045)
         print(str(self.boundingBox))
         self.odPair = OdPair(self.origin, self.destination)
         self.temperature = 1
@@ -140,7 +140,7 @@ def extractElevation(nodes, edges):
 
 
 def extractNodesElevation(nodes):
-    nodesElevation = pd.read_csv(os.path.join("statistical data", "nodesWithElevationSmall.csv"), index_col=0)
+    nodesElevation = pd.read_csv(os.path.join("statistical data", "nodesWithElevation.csv"), index_col=0)
     nodes['indexId'] = nodes.index
     nodes['elevation'] = nodes.apply(lambda x: nodesElevation.loc[x['indexId'], 'MeanElevation'], axis=1)
 
