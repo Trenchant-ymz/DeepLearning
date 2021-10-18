@@ -14,17 +14,20 @@ from torchinterp1d import Interp1d
 import math
 
 
+
 # Before running the code, run 'python -m visdom.server' in the terminal to open visdom panel.
 
 # divide a segment equally into n parts according to the length
 lengthOfVelocityProfile = 20
 tParts = 20 # divide time into several parts
 # mean std
-meanOfSegmentLength = 607.8692133
-stdOfSegmentLength = 899.7448693
+meanOfSegmentLength = 608.2156661
+stdOfSegmentLength = 900.4150229
 
-meanOfMass = 23204.01011
-stdOfMass = 8225.790208
+
+meanOfMass = 23204.9788
+stdOfMass = 8224.139199
+
 
 
 omega_time = 0.5
@@ -81,7 +84,7 @@ else:
     device = torch.device("cpu")
 
 # local
-ckpt_path = "multitaskModels/multiTaskVD.mdl"
+ckpt_path = "multitaskModels/multiTaskVT.mdl"
 data_root = "model_data_newOct"
 output_root = "prediction_result.csv"
 

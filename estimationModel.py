@@ -25,13 +25,13 @@ class EstimationModel:
         self.outputOfModel = outputOfModel
         self.model = AttentionBlk(feature_dim=self.featureDim, embedding_dim=self.embeddingDim,
                                   num_heads=self.numOfHeads, output_dimension=self.outputDimension)
-        self.modelAddress = "pretrained models/best_13d_" + self.outputOfModel + "SimulateDatamlDrop180.mdl"
+        self.modelAddress = "pretrained models/gat" + self.outputOfModel + "OctDropAddRelu.mdl"
         #self.modelAddress = "pretrained models/best_13d_" + self.outputOfModel + "SimulateData.mdl"
 
         self.model.load_state_dict(torch.load(self.modelAddress, map_location=self.device))
         self.model.to(self.device)
 
-    def predict(self, numericalInputData, categoricalInputData):
+    def predictFromData(self, numericalInputData, categoricalInputData):
         numericalInputData = torch.Tensor(numericalInputData).unsqueeze(0)
         categoricalInputData = torch.LongTensor(categoricalInputData).transpose(0, 1).contiguous().unsqueeze(0)
         #print("numericalInputData", numericalInputData)
@@ -74,27 +74,38 @@ class MultiTaskEstimationModel:
         self.outputOfModel = outputOfModel
         self.model = AttentionBlk(feature_dim=self.featureDim, embedding_dim=self.embeddingDim,
                                   num_heads=self.numOfHeads, output_dimension=self.lengthOfVelocityProfile)
-        self.modelAddress = "best13dMultiTask.mdl"
+        self.modelAddress = "multitaskModels/multiTaskVT.mdl"
         #self.modelAddress = "pretrained models/best_13d_" + self.outputOfModel + "SimulateData.mdl"
 
         self.model.load_state_dict(torch.load(self.modelAddress, map_location=self.device))
         self.model.to(self.device)
 
-    def predict(self, numericalInputTensor, categoricalInputTensor):
+    def predictFromData(self, numericalInputData, categoricalInputData):
+        numericalInputTensor = torch.Tensor(numericalInputData).unsqueeze(0)
+        categoricalInputTensor = torch.LongTensor(categoricalInputData).transpose(0, 1).contiguous().unsqueeze(0)
+        #print("numericalInputData", numericalInputData)
+        #print("categoricalInputData", categoricalInputData)
+        return self.predictFromTensor(numericalInputTensor, categoricalInputTensor).tolist()[0]
+
+    def predictFromTensor(self, numericalInputTensor, categoricalInputTensor):
 
         #print("numericalInputData", numericalInputData)
         #print("categoricalInputData", categoricalInputData)
+        # mean std
+        meanOfSegmentLength = 608.2156661
+        stdOfSegmentLength = 900.4150229
+
+        meanOfMass = 23204.9788
+        stdOfMass = 8224.139199693
         velocityProfile = self.model(numericalInputTensor, categoricalInputTensor) + 0.1
-        meanOfSegmentLength = 607.8692133
-        stdOfSegmentLength = 899.7448693
-        # extract the length of this segment
-        # [batch size]
+
         length = self.denormalize(numericalInputTensor[:, 3 // 2, 4], meanOfSegmentLength, stdOfSegmentLength)
-        v, t = self.vd2vt(velocityProfile, length)
+        m = self.denormalize(numericalInputTensor[:, 3 // 2, 1], meanOfMass, stdOfMass).unsqueeze(-1)
+        v, t = self.vt2t(velocityProfile, length)
         pred_Time = self.timeEstimation(t)
-        pred_Fuel = self.fuelEstimation(v, t)
+        pred_Fuel = self.fuelEstimation(v, t, m)
         if self.outputOfModel == 'fuel':
-            print(pred_Fuel, pred_Fuel.shape)
+            #print(pred_Fuel, pred_Fuel.shape)
             return pred_Fuel
         else:
             return pred_Time
@@ -114,7 +125,8 @@ class MultiTaskEstimationModel:
             gc.collect()
         return energyDictionary
 
-    def vd2vt(self,velocityProfile, length):
+    # version 1 vd=>vt=>Same time interpolation
+    def vd2vtWithInterpolation(self,velocityProfile, length):
         lengthOfEachPart = length / (velocityProfile.shape[1] - 1)
         averageV = velocityProfile[:, 0:-1] + velocityProfile[:, 1:]
         tOnSubPath = (2 * lengthOfEachPart).unsqueeze(-1) / averageV
@@ -136,15 +148,45 @@ class MultiTaskEstimationModel:
         # plt.show()
         return intetpResult, tNew
 
+    # version 1 vd=>vt
+    def vd2vt(self,velocityProfile, length):
+        '''
+
+        :param velocityProfile: velocityProfile: velocity profiel (uniform length sampling)
+        :param length: length: total length of the segment
+        :return: tAxis: the axis of time of the velocity profile
+        '''
+        lengthOfEachPart = length / (velocityProfile.shape[1] - 1)
+        averageV = velocityProfile[:, 0:-1] + velocityProfile[:, 1:]
+        tOnSubPath = (2 * lengthOfEachPart).unsqueeze(-1) / averageV
+        tAxis = torch.matmul(tOnSubPath, torch.triu(torch.ones(tOnSubPath.shape[1], tOnSubPath.shape[1])).to(self.device))
+        tAxis = torch.cat([torch.zeros([tOnSubPath.shape[0], 1]).to(self.device), tAxis], dim=-1)
+        return velocityProfile, tAxis
+
+    # version 1 vt=>calculate t
+    def vt2t(self,velocityProfile, length):
+        '''
+
+        :param velocityProfile: velocity profiel (uniform time sampling)
+        :param length: total length of the segment
+        :return: tAxis: the axis of time of the velocity profile
+        '''
+        mul = torch.cat([torch.ones([1, 1]), 2 * torch.ones([velocityProfile.shape[1] - 2, 1]), \
+                         torch.ones([1, 1])], dim=0).to(self.device)
+        vAverage = torch.matmul(velocityProfile, mul) / 2
+        tForOnePart = length.unsqueeze(-1) / vAverage
+        tAxis = torch.arange(velocityProfile.shape[1]).unsqueeze(0).to(self.device) * tForOnePart
+        return velocityProfile, tAxis
+
     def timeEstimation(self,tNew):
         return tNew[:, -1]
 
-    def fuelEstimation(self,v, tNew):
+    def fuelEstimation(self, v, tNew, m):
         acc = self.vt2a(v, tNew)
-        fuel = self.vt2fuel(v, acc, tNew)
+        fuel = self.vt2fuel(v, acc, tNew, m)
         return fuel
 
-    def vt2a(self,v, t):
+    def vt2a(self, v, t):
         # calculate a using 1-3, 2-4
         dv = v[:, 2:] - v[:, 0:-2]
         dt = t[:, 2].unsqueeze(-1)
@@ -177,9 +219,9 @@ class MultiTaskEstimationModel:
         P = (Paccel + Pascent + Pdrag + Prr + Pinert + Paux) / 1000
         return P
 
-    def vt2fuel(self, v, a, t):
+    def vt2fuel(self, v, a, t, m):
 
-        m = 10000  # mass (kg)
+        # m = 10000  # mass (kg)
         rho = 1.225  # density of air (kg/m^3)
         theta = 0  # road grade (degrees)
         fc = 40.3  # fuel consumption (kWh/gal) # Diesel ~40.3 kWh/gal
@@ -189,7 +231,7 @@ class MultiTaskEstimationModel:
         P_avg = (P[:, :-1] + P[:, 1:]) / 2
         f = P_avg / (fc * eff) * t[:, 1].unsqueeze(-1) / 3600
         # from galon => ml
-        return torch.sum(f, dim=1) * 3.7854 * 1000
+        return torch.sum(f, dim=1) * 3.7854 * 100
 
     def denormalize(self, normalized, mean, std):
         return normalized * std + mean

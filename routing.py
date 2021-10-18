@@ -16,6 +16,9 @@ import gc
 # Profiling: python -m cProfile -o profile.pstats routing.py
 # Visualize profile: snakeviz profile.pstats
 
+# packages: torch, osmnx = 0.16.1, tqdm, bintrees, plotly
+
+# 用time数据训练model=》估计fuel； 80% 时间数据 20% 的能量数据
 
 class LocationRequest:
     def __init__(self, origin, destination, distance):
@@ -38,13 +41,14 @@ class LocationRequest:
         self.distance = distance*1609.34 # mile->km
         bbox = ox.utils_geo.bbox_from_point((44.9827, -93.22025), dist=self.distance, project_utm = False, return_crs = False)
         self.boundingBox = Box(bbox[-1], bbox[-2], bbox[-3], bbox[-4])
-        #self.boundingBox = Box(-93.4975, -93.1850, 44.7458, 45.0045)
+        self.boundingBox = Box(-93.4975, -93.1850, 44.7458, 45.0045)
         print(str(self.boundingBox))
         self.odPair = OdPair(self.origin, self.destination)
         self.temperature = 1
         self.mass = 23000
         # Monday
         self.dayOfTheWeek = 1
+
         # 9 am
         time = 9
         self.timeOfTheDay = self.calTimeStage(time)
@@ -62,6 +66,7 @@ class ParameterForTableIni:
         self.windowList = windowList
         self.osmGraph = osmGraph
         self.estMode = estMode
+        #self.estimationModel = MultiTaskEstimationModel(estMode)
         self.estimationModel = EstimationModel(estMode)
 
 
@@ -103,9 +108,9 @@ def main():
     ecoRoute, energyOnEcoRoute, ecoEdgePath = findEcoPathAndCalEnergy(graphWithElevation, locationRequest, lookUpTable)
     calAndPrintPathAttributes(graphWithElevation, ecoEdgePath, "ecoRoute")
     # fastest route
-    #fastestPath, shortestTime, fastestEdgePath = findFastestPathAndCalTime(graphWithElevation, locationRequest)
-    #calAndPrintPathAttributes(graphWithElevation, fastestEdgePath, "fastestPath")
-    plotRoutes([ecoEdgePath], graphWithElevation.getEdges(), ['green'], ['eco route'], 'resultml')
+    fastestPath, shortestTime, fastestEdgePath = findFastestPathAndCalTime(graphWithElevation, locationRequest)
+    calAndPrintPathAttributes(graphWithElevation, fastestEdgePath, "fastestPath")
+    plotRoutes([ecoEdgePath,fastestEdgePath], graphWithElevation.getEdges(), ['green','red'], ['eco route','fast route'], 'test')
     #graphWithElevation.plotPathList([shortestNodePath, ecoRoute, fastestPath],'routing result.pdf')
 
 
@@ -140,7 +145,7 @@ def extractElevation(nodes, edges):
 
 
 def extractNodesElevation(nodes):
-    nodesElevation = pd.read_csv(os.path.join("statistical data", "nodesWithElevation.csv"), index_col=0)
+    nodesElevation = pd.read_csv(os.path.join("statistical data", "nodesWithElevationSmall.csv"), index_col=0)
     nodes['indexId'] = nodes.index
     nodes['elevation'] = nodes.apply(lambda x: nodesElevation.loc[x['indexId'], 'MeanElevation'], axis=1)
 

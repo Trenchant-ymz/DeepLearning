@@ -2,7 +2,7 @@ import networkx as nx
 import osmnx as ox
 import os
 from edgeGdfPreprocessing import edgePreprocessing
-from estimationModel import EstimationModel
+from estimationModel import EstimationModel, MultiTaskEstimationModel
 from window import Window, WindowFromList
 from windowNode import NodeInPathGraph
 import time
@@ -254,6 +254,7 @@ class OsmGraph:
     def __calculateValue(self, path, estimationType):
         edgeDict = self.getEdgesDict()
         pointList = []
+        #estimationModel = MultiTaskEstimationModel(estimationType)
         estimationModel = EstimationModel(estimationType)
         value = 0
         firstSeg = path[0]
@@ -269,7 +270,7 @@ class OsmGraph:
                 window.sucSeg = -1
             numericalFeatures, categoricalFeatures = window.extractFeatures(edgeDict)
             # print(numericalFeatures, categoricalFeatures)
-            addValue = estimationModel.predict(numericalFeatures, categoricalFeatures)
+            addValue = estimationModel.predictFromData(numericalFeatures, categoricalFeatures)
             value += addValue
             if path[i] in [58029, 59122, 62170, 6004, 52169]:
                 print(value)

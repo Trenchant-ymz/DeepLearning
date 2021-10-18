@@ -25,7 +25,9 @@ class PositionwiseFeedForward(nn.Module):
         self.net_dropped = torch.nn.Sequential(
             nn.Linear(d_model, d_ff),
             nn.ReLU(),
-            nn.Linear(d_ff, d_model)
+            nn.Linear(d_ff, d_model),
+            # added
+            nn.ReLU()
         )
 
     def forward(self, x):
