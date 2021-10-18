@@ -51,7 +51,7 @@ contains the statistical data of our data used in the pre-training stage, includ
    (b) [routingAlgorithms.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/routingAlgorithms.py) 
    implements the Dijkstra and A * algorithm (from look-up-table or not).
    
-   (b) [window.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/window.py) the window of segments.
+   (b) [window.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/window.py) defines the window of segments.
 
    (c) [windowNode.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/windowNode.py) defines nodes in the window_graph:
    ![window graph](https://github.com/Trenchant-ymz/DeepLearning/blob/master/results/windowGraph.png)
@@ -65,7 +65,7 @@ contains the statistical data of our data used in the pre-training stage, includ
 8. [Get elevations from ArcGiS.ipynb](https://github.com/Trenchant-ymz/DeepLearning/blob/master/Get%20elevations%20from%20ArcGIS%20summarize%20elevation.ipynb) summarizes how to extract elevation data using ESRI Summarize Elevation API.
 
 9. [multiTaskPINN.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/multiTaskPINN.py): PiGat for energy estimation.
-![Architecture of PiGat](https://github.com/Trenchant-ymz/DeepLearning/blob/master/results/pigat.png)
+
 
 Change Log
 -----
