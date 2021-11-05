@@ -81,7 +81,7 @@ Version 1.2: np.array(tensor.cpu())
 version 2.0: 6 categorical features are added into the model.
 
 ### 2021/5/13
-version 3.0: Add an eco-routing script "eco routing.py" which can 
+version 3.0: Add an eco-routing script "routing.py" which can 
 estimating the eco route/ the shortest route/ the fastest route using the model trained by main.py
 
 ### 2021/5/19
