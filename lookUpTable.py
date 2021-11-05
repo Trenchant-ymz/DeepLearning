@@ -1,8 +1,6 @@
 import gc
 import pickle
 from edgeGdfPreprocessing import edgePreprocessing
-#from multiprocessing import Pool
-from pathos.multiprocessing import ProcessingPool as Pool
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
@@ -62,24 +60,22 @@ class LookUpTable:
                         numericalFeatures = torch.Tensor([x[0] for x in windowFeatureList]).to(device)
                         categoricalFeatures = torch.LongTensor([x[1] for x in windowFeatureList]).transpose(1,2).contiguous().to(device)
                         print(numericalFeatures.shape, categoricalFeatures.shape)
-                        #db = WindowFeatureDataLoader(windowFeatureList)
-                        del windowFeatureList
+                        # without dataloader
+                        # energyOfWindows = parameterForTableIni.estimationModel.predictFromTensor(numericalFeatures, categoricalFeatures).tolist()
+                        # for i in range(len(energyOfWindows)):
+                        #     table[tableRequest][i] = energyOfWindows[i]
+                        db = WindowFeatureDataLoader(numericalFeatures, categoricalFeatures)
+                        del windowFeatureList,numericalFeatures, categoricalFeatures
                         gc.collect()
-                        #dloader = DataLoader(db, batch_size=256, num_workers=0)
-                        energyOfWindows = parameterForTableIni.estimationModel.model(numericalFeatures, categoricalFeatures).squeeze(1).tolist()
-                        # mutitask version
-                        #energyOfWindows = parameterForTableIni.estimationModel.predictFromTensor(numericalFeatures,categoricalFeatures).tolist()
+                        dloader = DataLoader(db, batch_size=1048576, num_workers=0)
+                        for step, (idx,n,c) in tqdm(enumerate(dloader)):
+                            energyOfWindows = parameterForTableIni.estimationModel.predictFromTensor(n,c).tolist()
                         #print(energyOfWindows.shape)
-                        for i in range(len(energyOfWindows)):
-                            table[tableRequest][i] = energyOfWindows[i]
-
-                        #windowList = self.parameterForTableIni.windowList
-                        # multiprocess
-                        # pool = Pool(MultiNum)
-                        # energyOfWindows = pool.map(self.__calculateOneWindow, windowList)
-                        # pool.close()
-                        # pool.join()
-
+                            for i in range(len(energyOfWindows)):
+                                #print(i, idx[i].item())
+                                table[tableRequest][idx[i].item()] = energyOfWindows[i]
+                            del energyOfWindows
+                            gc.collect()
                     flg = 1
         with open("windowIdDict.pkl", "wb") as tf:
             pickle.dump(self.windowIdDict, tf)
@@ -109,22 +105,20 @@ class LookUpTable:
 
 
 class WindowFeatureDataLoader:
-    def __init__(self, windowFeatureList):
+    def __init__(self, numericalFeatures, categoricalFeatures):
 
         if torch.cuda.is_available():
             self.device = torch.device("cuda")
         else:
             self.device = torch.device("cpu")
-        self.numericalFeatures = torch.Tensor([x[0] for x in windowFeatureList]).to(self.device)
-        self.categoricalFeatures = torch.LongTensor([x[1] for x in windowFeatureList]).transpose(1,2).contiguous().to(self.device)
+        self.device = torch.device("cpu")
+        self.numericalFeatures = numericalFeatures
+        self.categoricalFeatures = categoricalFeatures
         #self.device = torch.device("cpu")
-        print(self.__len__())
-        print(self.numericalFeatures.shape, self.categoricalFeatures.shape)
-        print(self.__getitem__(0))
         #print(self.__getitem__(1))
 
     def __len__(self):
         return self.numericalFeatures.shape[0]
 
     def __getitem__(self, idx):
-        return torch.Tensor([idx]).to(self.device), self.numericalFeatures[idx,...], self.categoricalFeatures[idx,...]
+        return idx, self.numericalFeatures[idx,...], self.categoricalFeatures[idx,...]

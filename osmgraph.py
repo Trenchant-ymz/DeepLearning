@@ -174,7 +174,7 @@ class OsmGraph:
 
     def fastestPath(self, localRequest, lookUpTable = None):
         self.origNode, self.destNode = self.getODNodesFromODPair(localRequest.odPair)
-        self.estimationModel = EstimationModel("time")
+        self.estimationModel =EstimationModel("time")
         fastestPath, shortestTime, fastestEdgePath = self.dijkstra(localRequest, lookUpTable)
         return fastestPath, shortestTime, fastestEdgePath
 
@@ -254,8 +254,8 @@ class OsmGraph:
     def __calculateValue(self, path, estimationType):
         edgeDict = self.getEdgesDict()
         pointList = []
-        #estimationModel = MultiTaskEstimationModel(estimationType)
         estimationModel = EstimationModel(estimationType)
+        #estimationModel = EstimationModel(estimationType)
         value = 0
         firstSeg = path[0]
         window = Window(-1, -1, -1, firstSeg)
@@ -279,6 +279,9 @@ class OsmGraph:
         filename = open(f, 'w')
         for p in pointList:
             filename.write(str(p) + "\n")
+        filename.write("path: ")
+        for p in path:
+            filename.write(str(p) + ", ")
         filename.close()
         return value
 

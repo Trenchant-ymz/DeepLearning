@@ -25,7 +25,7 @@ class EstimationModel:
         self.outputOfModel = outputOfModel
         self.model = AttentionBlk(feature_dim=self.featureDim, embedding_dim=self.embeddingDim,
                                   num_heads=self.numOfHeads, output_dimension=self.outputDimension)
-        self.modelAddress = "pretrained models/gat" + self.outputOfModel + "OctDropAddRelu.mdl"
+        self.modelAddress = "pretrained models/gat" + self.outputOfModel + "Softplus.mdl"
         #self.modelAddress = "pretrained models/best_13d_" + self.outputOfModel + "SimulateData.mdl"
 
         self.model.load_state_dict(torch.load(self.modelAddress, map_location=self.device))
@@ -37,6 +37,10 @@ class EstimationModel:
         #print("numericalInputData", numericalInputData)
         #print("categoricalInputData", categoricalInputData)
         return self.model(numericalInputData.to(self.device), categoricalInputData.to(self.device)).item()
+
+    def predictFromTensor(self, numericalInputTensor, categoricalInputTensor):
+
+        return self.model(numericalInputTensor, categoricalInputTensor).squeeze(1)
 
     def predictList(self, dloader):
         self.model.eval()
@@ -55,8 +59,8 @@ class EstimationModel:
 
 
 class MultiTaskEstimationModel:
-    tParts = 20
-    lengthOfVelocityProfile = 20
+    tParts = 60
+    lengthOfVelocityProfile = 60
     featureDim = 6
     embeddingDim = [4, 2, 2, 2, 2, 4, 4]
     numOfHeads = 1
@@ -74,7 +78,7 @@ class MultiTaskEstimationModel:
         self.outputOfModel = outputOfModel
         self.model = AttentionBlk(feature_dim=self.featureDim, embedding_dim=self.embeddingDim,
                                   num_heads=self.numOfHeads, output_dimension=self.lengthOfVelocityProfile)
-        self.modelAddress = "multitaskModels/multiTaskVT.mdl"
+        self.modelAddress = "multitaskModels/multiTaskVTSoftplus.mdl"
         #self.modelAddress = "pretrained models/best_13d_" + self.outputOfModel + "SimulateData.mdl"
 
         self.model.load_state_dict(torch.load(self.modelAddress, map_location=self.device))
@@ -97,7 +101,7 @@ class MultiTaskEstimationModel:
 
         meanOfMass = 23204.9788
         stdOfMass = 8224.139199693
-        velocityProfile = self.model(numericalInputTensor, categoricalInputTensor) + 0.1
+        velocityProfile = self.model(numericalInputTensor, categoricalInputTensor)
 
         length = self.denormalize(numericalInputTensor[:, 3 // 2, 4], meanOfSegmentLength, stdOfSegmentLength)
         m = self.denormalize(numericalInputTensor[:, 3 // 2, 1], meanOfMass, stdOfMass).unsqueeze(-1)

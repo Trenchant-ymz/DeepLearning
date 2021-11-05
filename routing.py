@@ -18,8 +18,6 @@ import gc
 
 # packages: torch, osmnx = 0.16.1, tqdm, bintrees, plotly
 
-# 用time数据训练model=》估计fuel； 80% 时间数据 20% 的能量数据
-
 class LocationRequest:
     def __init__(self, origin, destination, distance):
         '''
@@ -41,7 +39,7 @@ class LocationRequest:
         self.distance = distance*1609.34 # mile->km
         bbox = ox.utils_geo.bbox_from_point((44.9827, -93.22025), dist=self.distance, project_utm = False, return_crs = False)
         self.boundingBox = Box(bbox[-1], bbox[-2], bbox[-3], bbox[-4])
-        self.boundingBox = Box(-93.4975, -93.1850, 44.7458, 45.0045)
+        #self.boundingBox = Box(-93.4975, -93.1850, 44.7458, 45.0045)
         print(str(self.boundingBox))
         self.odPair = OdPair(self.origin, self.destination)
         self.temperature = 1
@@ -66,8 +64,8 @@ class ParameterForTableIni:
         self.windowList = windowList
         self.osmGraph = osmGraph
         self.estMode = estMode
-        #self.estimationModel = MultiTaskEstimationModel(estMode)
         self.estimationModel = EstimationModel(estMode)
+        #self.estimationModel = EstimationModel(estMode)
 
 
 def main():
@@ -83,21 +81,16 @@ def main():
     edges = edgePreprocessing(nodes, edges, locationRequest.temperature, locationRequest.mass, locationRequest.dayOfTheWeek, locationRequest.timeOfTheDay)
     graphWithElevation = GraphFromGdfs(nodes, edges)
     graphWithElevation.removeIsolateNodes()
-    del nodes
-    del edges
-    del osmGraphInBbox
-    gc.collect()
     print('Graph loaded!')
-    estMode = "fuel"
-    filename = "lookUpTable_test"
+    filenameFuel = "lUTableForFuelInBigBox"
     # train new table and save it to filename.pkl
-    lookUpTable = trainNewLUTable(graphWithElevation, locationRequest, filename, mode=estMode)
+    lookUpTable = trainNewLUTable(graphWithElevation, locationRequest, filenameFuel, mode="fuel")
     # load table from filename.pkl
     #lookUpTable = LookUpTable(locationRequest, filename)
     #windowList = graphWithElevation.extractAllWindows(4)
     #energyEst = lookUpTable.extractValue(windowList[0])
     #print(energyEst)
-    print(len(lookUpTable))
+    #print(len(lookUpTable))
     #lookUpTable = None
     #print(windowList[0], energyEst)
     # shortest route
@@ -106,11 +99,15 @@ def main():
     # calAndPrintPathAttributes(graphWithElevation, shortestPath, "shortestPath")
     # eco route
     ecoRoute, energyOnEcoRoute, ecoEdgePath = findEcoPathAndCalEnergy(graphWithElevation, locationRequest, lookUpTable)
+    print(len(ecoEdgePath))
     calAndPrintPathAttributes(graphWithElevation, ecoEdgePath, "ecoRoute")
     # fastest route
-    fastestPath, shortestTime, fastestEdgePath = findFastestPathAndCalTime(graphWithElevation, locationRequest)
-    calAndPrintPathAttributes(graphWithElevation, fastestEdgePath, "fastestPath")
-    plotRoutes([ecoEdgePath,fastestEdgePath], graphWithElevation.getEdges(), ['green','red'], ['eco route','fast route'], 'test')
+    # filenameTime = "lookUpTableForTime"
+    # lookUpTable = trainNewLUTable(graphWithElevation, locationRequest, filenameTime, mode='time')
+    # fastestPath, shortestTime, fastestEdgePath = findFastestPathAndCalTime(graphWithElevation, locationRequest,lookUpTable)
+    # calAndPrintPathAttributes(graphWithElevation, fastestEdgePath, "fastestPath")
+    # plotRoutes([ecoEdgePath, fastestEdgePath, shortestPath], graphWithElevation.getEdges(), ['green','red','blue'], ['eco route','fastest route','shortest route'], 'test')
+    plotRoutes([ecoEdgePath], graphWithElevation.getEdges(), ['green'],['eco route'], 'testBigBox')
     #graphWithElevation.plotPathList([shortestNodePath, ecoRoute, fastestPath],'routing result.pdf')
 
 
@@ -145,7 +142,7 @@ def extractElevation(nodes, edges):
 
 
 def extractNodesElevation(nodes):
-    nodesElevation = pd.read_csv(os.path.join("statistical data", "nodesWithElevationSmall.csv"), index_col=0)
+    nodesElevation = pd.read_csv(os.path.join("statistical data", "nodesWithElevation.csv"), index_col=0)
     nodes['indexId'] = nodes.index
     nodes['elevation'] = nodes.apply(lambda x: nodesElevation.loc[x['indexId'], 'MeanElevation'], axis=1)
 
@@ -184,9 +181,9 @@ def findEcoPathAndCalEnergy(osmGraph, localRequest, lookUpTable):
     return ecoPath, ecoEnergy,  ecoEdgePath
 
 
-def findFastestPathAndCalTime(osmGraph, localRequest):
+def findFastestPathAndCalTime(osmGraph, localRequest,lookUpTable):
 
-    fastestPath, shortestTime, fastEdgePath = osmGraph.fastestPath(localRequest)
+    fastestPath, shortestTime, fastEdgePath = osmGraph.fastestPath(localRequest,lookUpTable)
     print("fastestPath:", fastestPath, "shortestTime:", shortestTime, fastEdgePath)
     #osmGraph.plotPath(fastestPath,"fastest route.pdf")
     return fastestPath, shortestTime, fastEdgePath

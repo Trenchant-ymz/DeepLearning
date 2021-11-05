@@ -75,13 +75,12 @@ else:
 # output_root = "/content/drive/MyDrive/Colab_Notebooks/DeepLearning/prediction_result.csv"
 # local
 #ckpt_path = "best_13d_fuel.mdl"
-ckpt_path = "pretrained models/gattimeOct.mdl"
+ckpt_path = "pretrained models/gatfuelSoftplus.mdl"
+#ckpt_path = "pretrained models/gatfuelOctDropAddRelu.mdl"
 data_root = "model_data_newOct"
 #data_root = "normalized data"
 #data_root = "DataDifferentiated"
 output_root = "prediction_result.csv"
-
-
 
 
 def denormalize(x_hat):
@@ -192,16 +191,21 @@ def train():
     viz = visdom.Visdom()
     # Create a new model or load an existing one.
     model = AttentionBlk(feature_dim=feature_dimension,embedding_dim=[4,2,2,2,2,4,4],num_heads=head_number,output_dimension=output_dimension)
-    if os.path.exists(ckpt_path):
-        print('Reloading model parameters..')
-        model.load_state_dict(torch.load(ckpt_path, map_location=device))
-    else:
-        print('Creating new model parameters..')
-        # this code is very important! It initialises the parameters with a
-        # range of values that stops the signal fading or getting too big.
-        for p in model.parameters():
-            if p.dim() > 1:
-                nn.init.xavier_uniform_(p)
+    # if os.path.exists(ckpt_path):
+    #     print('Reloading model parameters..')
+    #     model.load_state_dict(torch.load(ckpt_path, map_location=device))
+    # else:
+    #     print('Creating new model parameters..')
+    #     # this code is very important! It initialises the parameters with a
+    #     # range of values that stops the signal fading or getting too big.
+    #     for p in model.parameters():
+    #         if p.dim() > 1:
+    #             nn.init.xavier_uniform_(p)
+    print('Creating new model parameters..')
+
+    for p in model.parameters():
+        if p.dim() > 1:
+            nn.init.xavier_uniform_(p)
     model.to(device)
     print(model)
     print(next(model.parameters()).device)
@@ -351,45 +355,4 @@ if __name__ == '__main__':
 # test_length_path = [1,2,5,10,20,50,100,200,500]
 # mape =  [878.4875869750977,104.24556732177734,35.02033352851868,20.90749442577362,14.545997977256775,10.099445283412933,7.709670811891556,6.324310600757599,5.235186591744423]
 
-'''
-batch sz 256
-window sz 3
-header 1
-test_mape(%): 143.4951663017273
-test_mse: 0.020990536
-test_mape(%): 81.2801718711853
-test_mse: 0.03261754
-test_mape(%): 25.552162528038025
-test_mse: 0.086509205
-test_mape(%): 16.768477857112885
-test_mse: 0.19350451
-test_mape(%): 12.350236624479294
-test_mse: 0.48980802
-test_mape(%): 9.486592561006546
-test_mse: 1.889815
-test_mape(%): 8.374053239822388
-test_mse: 4.772601
-test_mape(%): 8.564424514770508
-test_mse: 14.494676
-'''
-
-'''
-simulated data (ml)
-test_mape(%): 183.24886560440063
-test_mse: 4879.1274
-test_mape(%): 81.87260627746582
-test_mse: 7834.052
-test_mape(%): 36.31833791732788
-test_mse: 21385.436
-test_mape(%): 26.705068349838257
-test_mse: 52697.875
-test_mape(%): 21.716944873332977
-test_mse: 154327.31
-test_mape(%): 17.657427489757538
-test_mse: 680198.25
-test_mape(%): 14.63715136051178
-test_mse: 1677317.1
-test_mape(%): 13.116849958896637
-test_mse: 3823652.5
-
-'''
+#

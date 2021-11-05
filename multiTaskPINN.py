@@ -10,7 +10,7 @@ import csv
 import time
 import visdom
 from tqdm import tqdm
-from torchinterp1d import Interp1d
+#from torchinterp1d import Interp1d
 import math
 
 
@@ -18,8 +18,8 @@ import math
 # Before running the code, run 'python -m visdom.server' in the terminal to open visdom panel.
 
 # divide a segment equally into n parts according to the length
-lengthOfVelocityProfile = 20
-tParts = 20 # divide time into several parts
+lengthOfVelocityProfile = 60
+tParts = lengthOfVelocityProfile # divide time into several parts
 # mean std
 meanOfSegmentLength = 608.2156661
 stdOfSegmentLength = 900.4150229
@@ -84,7 +84,7 @@ else:
     device = torch.device("cpu")
 
 # local
-ckpt_path = "multitaskModels/multiTaskVT.mdl"
+ckpt_path = "multitaskModels/multiTaskVTSoftplus.mdl"
 data_root = "model_data_newOct"
 output_root = "prediction_result.csv"
 
@@ -259,7 +259,7 @@ def eval(model, loader, output = False):
                 c_segment = c[:, :, i, :]
                 # [batch size, output dimension]
                 #print(x_segment.shape,c_segment.shape)
-                velocityProfile = model(x_segment, c_segment)+0.1
+                velocityProfile = model(x_segment, c_segment)
 
                 # extract the length of this segment
                 # [batch size]
@@ -311,16 +311,12 @@ def train():
     viz = visdom.Visdom()
     # Create a new model or load an existing one.
     model = AttentionBlk(feature_dim=feature_dimension,embedding_dim=[4,2,2,2,2,4,4],num_heads=head_number,output_dimension=lengthOfVelocityProfile)
-    if os.path.exists(ckpt_path):
-        print('Reloading model parameters..')
-        model.load_state_dict(torch.load(ckpt_path, map_location=device))
-    else:
-        print('Creating new model parameters..')
-        # this code is very important! It initialises the parameters with a
-        # range of values that stops the signal fading or getting too big.
-        for p in model.parameters():
-            if p.dim() > 1:
-                nn.init.xavier_uniform_(p)
+    print('Creating new model parameters..')
+    # this code is very important! It initialises the parameters with a
+    # range of values that stops the signal fading or getting too big.
+    for p in model.parameters():
+        if p.dim() > 1:
+            nn.init.xavier_uniform_(p)
     model.to(device)
     print(model)
     print(next(model.parameters()).device)
@@ -367,7 +363,7 @@ def train():
                 c_segment = c[:, :, i, :]
                 # [batch size, lengthOfVelocityProfile]
                 # offset to make sure the average velocity is higher than 0
-                velocityProfile = model(x_segment, c_segment)+0.1
+                velocityProfile = model(x_segment, c_segment)
 
                 # extract the length of this segment
                 # [batch size]

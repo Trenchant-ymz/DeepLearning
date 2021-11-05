@@ -143,7 +143,7 @@ class Dijkstra:
             return 0
         else:
             numericalFeatures, categoricalFeatures = curNodeInPathGraph.window.extractFeatures(self.edgesDict)
-            return self.estimationModel.predict(numericalFeatures, categoricalFeatures)
+            return self.estimationModel.predictFromData(numericalFeatures, categoricalFeatures)
 
     def generateMinValNodePath(self):
         dNode = self.destNodeGenerated
