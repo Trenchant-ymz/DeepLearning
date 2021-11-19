@@ -4,6 +4,8 @@ import geopandas as gpd
 import torch
 from torch_geometric.nn import Node2Vec
 from torch_geometric.utils import from_networkx
+import pickle
+
 
 def readGraph():
     '''
@@ -28,9 +30,20 @@ def readGraph():
 class N2V:
     def __init__(self, ckpt_path, newModel = False):
         self.dualGraph = readGraph()
+        file_name = "dualGraphNodes.pkl"
+        open_file = open(file_name, "wb")
+        pickle.dump(list(self.dualGraph.nodes), open_file)
+        open_file.close()
+        #print(list(self.dualGraph.nodes))
         self.data = from_networkx(self.dualGraph)
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        self.model = Node2Vec(self.data.edge_index, embedding_dim=32, walk_length=20,
+        open_file = open("edge_index.pkl", "wb")
+        pickle.dump(self.data.edge_index, open_file)
+        open_file.close()
+        open_file = open("edge_index.pkl", "rb")
+        edge_index = pickle.load(open_file)
+        open_file.close()
+        self.model = Node2Vec(edge_index, embedding_dim=32, walk_length=20,
                          context_size=10, walks_per_node=10,
                          num_negative_samples=1, p=1, q=1, sparse=True).to(self.device)
 

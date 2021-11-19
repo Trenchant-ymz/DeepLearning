@@ -116,3 +116,6 @@ version 6.1: Incorporate mass into the physics equations in PiGAT.
 ### 2021/11/5
 version 7.0: Add a new feature: representation of segments using node2vec in [node2vec.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/node2vec.py)
 ; Reproduce the network framework proposed in Baidu's paper in [constGat.py](https://github.com/Trenchant-ymz/DeepLearning/blob/master/constGat.py).
+
+### 2021/11/19
+version 7.1: Fixed some bugs

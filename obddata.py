@@ -4,10 +4,39 @@ import csv
 from torch.utils.data import Dataset, DataLoader
 import pandas as pd
 import numpy as np
+import networkx as nx
+import osmnx as ox
+import geopandas as gpd
+import torch
+import pickle
+from torch.utils.data.dataset import ConcatDataset
+import math
+import torch
+from torch.utils.data.sampler import RandomSampler
+
+def readGraph():
+    '''
+    :param
+        'dual': segment -> node; intersection -> edge
+    :return:
+    '''
+    percentile = '005'
+    filefold = r'D:/cygwin64/home/26075/workspace/'
+    network_gdf = gpd.read_file(filefold+'network_'+percentile+'/edges.shp')
+    nodes_gdf = gpd.read_file(filefold+'network_'+percentile+'/nodes.shp')
+    graph = ox.utils_graph.graph_from_gdfs(nodes_gdf, network_gdf)
+    # convert the graph to the dual graph
+    lineGraph = nx.line_graph(graph)
+    # transfer the multiDilineGraph to 2 dimension
+    eNew = [(x[0],x[1]) for x in lineGraph.edges]
+
+    graph = nx.Graph()
+    graph.update(edges=eNew, nodes=lineGraph.nodes)
+    return graph
 
 class ObdData(Dataset):
 
-    def __init__(self, root="data_normalized", mode="train", percentage=20, window_size=5, path_length=10\
+    def __init__(self, root="data_normalized", mode="train", fuel = False, percentage=20, window_size=5, path_length=10\
                  , label_dimension=1, pace=5, withoutElevation = False):
         """
 
@@ -23,18 +52,30 @@ class ObdData(Dataset):
         self.percentage = str(percentage)
         self.root = os.path.join(root, self.percentage)
         self.mode = mode
+        self.fuel = fuel
         self.windowsz = window_size
         self.path_length = path_length
         self.label_dimension = label_dimension
         self.pace = pace
         self.len_of_index = 0
         self.withoutElevation = withoutElevation
+        #self.dualGraphNode = list(readGraph().nodes)
+        file_name = "dualGraphNodes.pkl"
+        open_file = open(file_name, "rb")
+        self.dualGraphNode = pickle.load(open_file)
+        open_file.close()
+        #print(self.dualGraphNode)
+
+
         if self.withoutElevation == True:
             self.numerical_dimension = 5
         else:
             self.numerical_dimension = 6
         #self.data_list_w, self.label_list_w = self.load_csv(self.mode + "_data.csv")
-        self.data = self.load_csv(self.mode + "_data.csv")
+        if fuel == True:
+            self.data = self.load_csv(self.mode + "_data_fuel.csv")
+        else:
+            self.data = self.load_csv(self.mode + "_data.csv")
         #print(self.root)
         use_cuda = torch.cuda.is_available()
         if use_cuda:
@@ -42,11 +83,12 @@ class ObdData(Dataset):
             device = torch.device("cuda")
         else:
             device = torch.device("cpu")
+        #print(self.data[0])
         self.data_x = torch.Tensor([x[0] for x in self.data]).to(device)
         #print(self.data_x[0,...].shape)
         self.data_y = torch.Tensor([x[1] for x in self.data]).to(device)
         self.data_c = torch.LongTensor([x[5:12] for x in self.data]).to(device)
-
+        self.id = torch.LongTensor([x[-1] for x in self.data]).to(device)
 
 
     def load_csv(self, filename):
@@ -86,9 +128,15 @@ class ObdData(Dataset):
                             data_row[1] = list(map(float, data_row[1][1:-1].split(", ")))
                         elif self.label_dimension == 1:
                             # [0] for fuel *100; [1] for time
-                            data_row[1] = list(map(float, data_row[1][1:-1].split(", ")))[0]
+                            if self.fuel:
+                                data_row[1] = list(map(float, data_row[1][1:-1].split(", ")))[0]*100
+                            else:
+                                data_row[1] = list(map(float, data_row[1][1:-1].split(", ")))[1]
 
                         data_row[2:] = map(int, map(float, data_row[2:]))
+                        #data_row[-1] = map(int, data_row[-1].split(", "))
+                        #data_row[-1] =self.dualGraphNode.index((data_row[-1][0], data_row[-1][1], 0))
+                        #print('data_row',data_row)
                         data_list.append(data_row)
             if not len(data_list):
                 print("No qualified data")
@@ -96,7 +144,7 @@ class ObdData(Dataset):
             for i in range(len(data_list)):
                 position = data_list[i][4]
                 length = data_list[i][3]
-                trip_id = data_list[i][-1]
+                trip_id = data_list[i][-2]
                 # construct a feature matrix for each window (windowsz * feature_dimension),
                 # each row of the matrix is a feature(or label) of a segment in the window
                 left = position - self.windowsz // 2  # [left, right) in the trip
@@ -104,16 +152,16 @@ class ObdData(Dataset):
                 left_idx = i - self.windowsz // 2  # [left_idx, right_idx) in the data_list
                 right_idx = i + self.windowsz // 2 + 1
                 if self.label_dimension ==1:
-                    data_zero_line = [[0]*self.numerical_dimension]+[0]*12
+                    data_zero_line = [[0]*self.numerical_dimension]+[0]*13
                 else:
-                    data_zero_line = [[0] * self.numerical_dimension] + [[0,0]] + [0] * 11
+                    data_zero_line = [[0] * self.numerical_dimension] + [[0,0]] + [0] * 12
                 if left > 0 and right <= length:
                     #print(left,right,left_idx,right_idx)
                     data_sub = data_list[left_idx:right_idx]
                 elif left <= 0 and right <= length:
                     #print(left, right, left_idx, right_idx)
                     data_sub = [data_zero_line]*(1 - left)+data_list[left_idx+1 - left:right_idx]
-                elif left > 0 and right > length+1:
+                elif left > 0 and right > length+ 1:
                     # print(left, right, left_idx, right_idx)
                     data_sub = data_list[left_idx:(i+(length-position)+1)] + [data_zero_line] * (right - length-1)
                 else:
@@ -144,44 +192,44 @@ class ObdData(Dataset):
 
     def __getitem__(self, idx):
 
-        return self.data_x[idx,...],self.data_y[idx,...],self.data_c[idx,...]
+        return self.data_x[idx,...],self.data_y[idx,...],self.data_c[idx,...],self.id[idx,...]
+
 
 
 
 def testDataloader():
+    batch_size = 8
     # test dataloader
-    db = ObdData("normalized data", "test", percentage=20, label_dimension= 2,withoutElevation=False)
-    x,y,c = next(iter(db))
-    # print("data:", x, y, c)
+    db_time = ObdData("model_data_newOct", "train", fuel=False, percentage=10, label_dimension=1,withoutElevation=False)
+    db_fuel = ObdData("model_data_newOct", "train", fuel=True, percentage=10, label_dimension=1, withoutElevation=False)
+    sampler = torch.utils.data.RandomSampler(db_fuel, replacement=True, num_samples=len(db_time),
+                                             generator=None)
+    #concat_dataset = ConcatDataset([db_time, db_fuel])
 
 
-
-    def denormalize(x_hat):
-        print(x_hat.shape)
-        fuel_mean = [0.205986075]
-        fuel_std = [0.32661580545285]
-        mean = torch.tensor(fuel_mean).unsqueeze(1)
-        std = torch.tensor(fuel_std).unsqueeze(1)
-        return x_hat * std + mean
-
-    # print(y)
-    # print(c[0,...])
-    # print(c[-1, ...])
 
     # print(x,y,d)
-    loader = DataLoader(db, batch_size= 2, shuffle= False, num_workers=0)
-    for x,y,c in loader:
+    loader_time = DataLoader(db_time, batch_size= batch_size, shuffle= False, num_workers=0)
+    loader_fuel = DataLoader(db_fuel, batch_size= batch_size, sampler = sampler, shuffle=False, num_workers=0)
+    for (x,y,c,id),(x_f,y_f,c_f,id_f) in zip(loader_time,loader_fuel):
         # x: numerical features [batch, path length, window size, feature dimension]
         # y: label [batch, path length, window size, (label dimension)]
         # c: categorical features [batch, number of categorical features, path length, window size]
-        print(x.shape, y.shape,c.shape)
+        # id: node2vec [batch, path length, window size]
+        print(x.shape, y.shape,c.shape,id.shape)
+        print(x_f.shape, y_f.shape,c_f.shape,id_f.shape)
+        print(id)
+        print(id_f)
         print(y)
-        t = torch.tensor([1, 0.01]).unsqueeze(0).to("cuda")
-        print(t.shape)
+        #t = torch.tensor([1, 0.01]).unsqueeze(0).to("cuda")
+        #print(t.shape)
         label = y[:, 0, 5 // 2]
         print(label.shape)
         print(label)
-        print(label * t)
+        labelfuel = y_f[:, 0, 5 // 2]
+        print(labelfuel.shape)
+        print(labelfuel)
+        #print(label * t)
         # c[:,0,:,:] the first categorical features
         # "road_type", "time_stage", "week_day", "lanes", "bridge", "endpoint_u", "endpoint_v"
         print(c[:,:,0,:])

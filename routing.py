@@ -36,10 +36,11 @@ class LocationRequest:
         #self.destination = Point(-93.230358, 44.973583)
 
         # from murphy company (-93.22025, 44.9827), travel 70 miles
-        self.distance = distance*1609.34 # mile->km
-        bbox = ox.utils_geo.bbox_from_point((44.9827, -93.22025), dist=self.distance, project_utm = False, return_crs = False)
-        self.boundingBox = Box(bbox[-1], bbox[-2], bbox[-3], bbox[-4])
-        #self.boundingBox = Box(-93.4975, -93.1850, 44.7458, 45.0045)
+        # self.distance = distance*1609.34 # mile->km
+        # bbox = ox.utils_geo.bbox_from_point((44.9827, -93.22025), dist=self.distance, project_utm = False, return_crs = False)
+        # self.boundingBox = Box(bbox[-1], bbox[-2], bbox[-3], bbox[-4])
+        # small bounding box
+        self.boundingBox = Box(-93.4975, -93.1850, 44.7458, 45.0045)
         print(str(self.boundingBox))
         self.odPair = OdPair(self.origin, self.destination)
         self.temperature = 1
@@ -88,26 +89,27 @@ def main():
     # load table from filename.pkl
     #lookUpTable = LookUpTable(locationRequest, filename)
     #windowList = graphWithElevation.extractAllWindows(4)
-    #energyEst = lookUpTable.extractValue(windowList[0])
-    #print(energyEst)
     #print(len(lookUpTable))
+
+    # define lookUpTable to None if you don't want to use the lookuptable method
     #lookUpTable = None
-    #print(windowList[0], energyEst)
+
     # shortest route
-    # shortestNodePath = findShortestPath(graphWithElevation, locationRequest)
-    # shortestPath = nodePathTOEdgePath(shortestNodePath, edges)
-    # calAndPrintPathAttributes(graphWithElevation, shortestPath, "shortestPath")
+    shortestNodePath = findShortestPath(graphWithElevation, locationRequest)
+    shortestPath = nodePathTOEdgePath(shortestNodePath, edges)
+    calAndPrintPathAttributes(graphWithElevation, shortestPath, "shortestPath")
     # eco route
     ecoRoute, energyOnEcoRoute, ecoEdgePath = findEcoPathAndCalEnergy(graphWithElevation, locationRequest, lookUpTable)
     print(len(ecoEdgePath))
     calAndPrintPathAttributes(graphWithElevation, ecoEdgePath, "ecoRoute")
     # fastest route
-    # filenameTime = "lookUpTableForTime"
-    # lookUpTable = trainNewLUTable(graphWithElevation, locationRequest, filenameTime, mode='time')
-    # fastestPath, shortestTime, fastestEdgePath = findFastestPathAndCalTime(graphWithElevation, locationRequest,lookUpTable)
-    # calAndPrintPathAttributes(graphWithElevation, fastestEdgePath, "fastestPath")
-    # plotRoutes([ecoEdgePath, fastestEdgePath, shortestPath], graphWithElevation.getEdges(), ['green','red','blue'], ['eco route','fastest route','shortest route'], 'test')
-    plotRoutes([ecoEdgePath], graphWithElevation.getEdges(), ['green'],['eco route'], 'testBigBox')
+    filenameTime = "lookUpTableForTime"
+    lookUpTable = trainNewLUTable(graphWithElevation, locationRequest, filenameTime, mode='time')
+    fastestPath, shortestTime, fastestEdgePath = findFastestPathAndCalTime(graphWithElevation, locationRequest, lookUpTable)
+    calAndPrintPathAttributes(graphWithElevation, fastestEdgePath, "fastestPath")
+    # save the routing results to the "./results/filename.html"
+    plotRoutes([ecoEdgePath, fastestEdgePath, shortestPath], graphWithElevation.getEdges(), ['green','red','blue'], ['eco route','fastest route','shortest route'], 'routingresults')
+    #plotRoutes([ecoEdgePath], graphWithElevation.getEdges(), ['green'],['eco route'], 'testBigBox')
     #graphWithElevation.plotPathList([shortestNodePath, ecoRoute, fastestPath],'routing result.pdf')
 
 
@@ -142,7 +144,7 @@ def extractElevation(nodes, edges):
 
 
 def extractNodesElevation(nodes):
-    nodesElevation = pd.read_csv(os.path.join("statistical data", "nodesWithElevation.csv"), index_col=0)
+    nodesElevation = pd.read_csv(os.path.join("statistical data", "nodesWithElevationSmall.csv"), index_col=0)
     nodes['indexId'] = nodes.index
     nodes['elevation'] = nodes.apply(lambda x: nodesElevation.loc[x['indexId'], 'MeanElevation'], axis=1)
 

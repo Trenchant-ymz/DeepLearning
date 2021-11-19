@@ -1,11 +1,12 @@
 import torch
 from torch import nn
 import torch.nn.functional as F
-
+from node2vec import N2V
+import pickle
+from torch_geometric.nn import Node2Vec
 
 class LayerNorm(nn.Module):
     "Construct a layernorm module."
-
     def __init__(self, features, eps=1e-6):
         super(LayerNorm, self).__init__()
         self.a_2 = nn.Parameter(torch.ones(features))
@@ -20,8 +21,7 @@ class LayerNorm(nn.Module):
 
 class PositionwiseFeedForward(nn.Module):
     "Implements FFN equation."
-
-    def __init__(self, d_model, d_ff=32):
+    def __init__(self, d_model, d_ff = 32):
         super(PositionwiseFeedForward, self).__init__()
         # Torch linears have a `b` by default.
         self.net_dropped = torch.nn.Sequential(
@@ -34,13 +34,23 @@ class PositionwiseFeedForward(nn.Module):
         return self.net_dropped(x)
 
 
-class AttentionBlk(nn.Module):
+class Pigat(nn.Module):
 
-    def __init__(self, feature_dim, embedding_dim, num_heads, output_dimension):
+    def __init__(self, feature_dim, embedding_dim, num_heads, output_dimension,n2v_dim):
         super(AttentionBlk, self).__init__()
+        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        #self.n2v = N2V('node2vec.mdl')
+        open_file = open("edge_index.pkl", "rb")
+        edge_index = pickle.load(open_file)
+        open_file.close()
+        self.n2v = Node2Vec(edge_index, embedding_dim=32, walk_length=20,
+                              context_size=10, walks_per_node=10,
+                              num_negative_samples=1, p=1, q=1, sparse=True)
+
+
         self.embedding_dim = embedding_dim
         self.feature_dim = feature_dim
-        self.total_embed_dim = self.feature_dim + sum(self.embedding_dim)
+        self.total_embed_dim = self.feature_dim + sum(self.embedding_dim)+ n2v_dim
         self.output_dimension = output_dimension
         self.num_heads = num_heads
         # embedding layers for 7 categorical features
@@ -59,13 +69,14 @@ class AttentionBlk(nn.Module):
         # 0-16
         self.embedding_endpoint_u = nn.Embedding(17, self.embedding_dim[5])
         self.embedding_endpoint_v = nn.Embedding(17, self.embedding_dim[6])
-        self.selfattn = nn.MultiheadAttention(embed_dim=self.total_embed_dim, num_heads=self.num_heads)
-        self.norm = LayerNorm(self.total_embed_dim)
+        self.selfattn = nn.MultiheadAttention(embed_dim= self.total_embed_dim, num_heads= self.num_heads)
+        self.norm = LayerNorm(self.total_embed_dim )
         self.feed_forward = PositionwiseFeedForward(self.total_embed_dim)
-        self.linear = nn.Linear(self.total_embed_dim, self.output_dimension)
+        self.linear = nn.Linear(self.total_embed_dim,self.output_dimension)
         self.activate = nn.Softplus()
 
-    def forward(self, x, c):
+
+    def forward(self, x, c, id):
         # x -> [ batch, window size, feature dimension]
         # c -> [batch, number of categorical features, window size]
 
@@ -79,8 +90,12 @@ class AttentionBlk(nn.Module):
         embedded_endpoint_u = self.embedding_endpoint_u(c[:, 5, :])
         embedded_endpoint_v = self.embedding_endpoint_v(c[:, 6, :])
         '''
-        # [batch_sz, window_sz, embedding dim]
-        embedded = self.embedding_road_type(c[:, 0, :])
+        #[batch, window size, node2vec]
+        segmentEmbed = self.n2v(id)
+        #print('segmentEmbed', segmentEmbed.shape)
+
+        # [batch_sz, window_sz, embedding dim
+        embedded = self.embedding_road_type(c[:,0,:])
         embedded = torch.cat([embedded, self.embedding_time_stage(c[:, 1, :])], dim=-1)
         embedded = torch.cat([embedded, self.embedding_week_day(c[:, 2, :])], dim=-1)
         embedded = torch.cat([embedded, self.embedding_lanes(c[:, 3, :])], dim=-1)
@@ -88,17 +103,17 @@ class AttentionBlk(nn.Module):
         embedded = torch.cat([embedded, self.embedding_endpoint_u(c[:, 5, :])], dim=-1)
         embedded_6 = self.embedding_endpoint_v(c[:, 6, :])
         embedded = torch.cat([embedded, embedded_6], dim=-1)
-        # [ batch, window size, feature dimension+ sum embedding dimension]
-        x = torch.cat([x, embedded], dim=-1)
+        # [ batch, window size, feature dimension+ sum embedding dimension + node2vec]
+        x = torch.cat([x, embedded, segmentEmbed], dim=-1)
         # [ window size, batch,  feature dimension+ sum embedding dimension]
         x = x.transpose(0, 1).contiguous()
         # q -> [1, batch, feature dimension+ sum embedding dimension]
         # middle of the window
         q = x[x.shape[0] // 2, :, :].unsqueeze(0)
         # x -> [windowsz, batch, feature dimension+ sum embedding dimension]
-        x_output, output_weight = self.selfattn(q, x, x)
+        x_output, output_weight = self.selfattn(q,x,x)
         # x_output -> [1, batchsz, feature dimension+ sum embedding dimension]
-        x_output = self.norm(q + x_output)
+        x_output = self.norm(q+x_output)
         x_output_ff = self.feed_forward(x_output.squeeze(0))
         x_output = self.norm(x_output.squeeze(0) + x_output_ff)
         x_output = self.linear(x_output)
@@ -107,22 +122,27 @@ class AttentionBlk(nn.Module):
         x_output = self.activate(x_output)
         return x_output
 
-
 def testNet():
     # test nets
-    net = AttentionBlk(feature_dim=6, embedding_dim=[4, 2, 2, 2, 2, 4, 4], num_heads=1, output_dimension=1)
+    net = AttentionBlk(feature_dim=6,embedding_dim=[4,2,2,2,2,4,4],num_heads=1,output_dimension=1,n2v_dim=32)
+    p = sum(map(lambda p: p.numel(), net.parameters()))
+    print("number of parameters:", p)
+    net.n2v.embedding.weight.requires_grad = False
+    print(dict(net.named_parameters()))
     # [batch size, window length,  feature dimension]
     tmp = torch.randn(1, 3, 6)
     # [batch, categorical_dim, window size]
     c = torch.randint(1, (1, 7, 3))
-    print(tmp.shape, c.shape)
+    id = torch.randint(1, (1, 3))
+    print(tmp.shape,c.shape,id.shape)
     # [batch size, output dimension]
-    out = net(tmp, c)
+    out = net(tmp,c,id)
 
     print(net)
-    print("tmp", tmp)
+    print("tmp",tmp)
     print("out", out)
     print("fc out:", out.shape)
+
 
 
 if __name__ == "__main__":

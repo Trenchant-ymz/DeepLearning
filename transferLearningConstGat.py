@@ -3,7 +3,7 @@ from torch import nn, optim
 import os
 from torch.utils.data import DataLoader
 from obddata import ObdData
-from nets import AttentionBlk
+from constGat import ConstGat
 import torch.nn.functional as F
 import numpy as np
 import csv
@@ -75,12 +75,13 @@ else:
 # output_root = "/content/drive/MyDrive/Colab_Notebooks/DeepLearning/prediction_result.csv"
 # local
 #ckpt_path = "best_13d_fuel.mdl"
-ckpt_path = "pretrained models/gatfuelSoftplus.mdl"
+old_ckpt_path = "cgtime.mdl"
+ckpt_path = "cgtrans.mdl"
 #ckpt_path = "pretrained models/gatfuelOctDropAddRelu.mdl"
 data_root = "model_data_newOct"
 #data_root = "normalized data"
 #data_root = "DataDifferentiated"
-output_root = "prediction_result.csv"
+output_root = "prediction_result_constgat.csv"
 
 
 def denormalize(x_hat):
@@ -93,7 +94,7 @@ def denormalize(x_hat):
 def mape_loss(label, pred):
     """
     Calculate Mean Absolute Percentage Error of the energy consumption estimation
-    labels with 0 value are masked
+    labels with 0 value are masked`
     :param pred: [batchsz, output dimension]
     :param label: [batchsz, output dimension]
     :return: MAPE
@@ -122,9 +123,9 @@ def eval(model, loader, output = False):
     loss_mape = 0
     loss_mse = 0
     cnt = 0
-    id = 0
+    identity = 0
     model.eval()
-    for x, y,c in loader:
+    for x, y,c,id in loader:
         #x, y, c = x.to(device), y.to(device), c.to(device)
         with torch.no_grad():
             label_segment = torch.zeros(y.shape[0], output_dimension).to(device)
@@ -138,9 +139,10 @@ def eval(model, loader, output = False):
                 x_segment = x[:, i, :, :]
                 # [batch, categorical_dim, window size]
                 c_segment = c[:, :, i, :]
+                # [batch, window size]
+                id_segeent = id[:, i, :]
                 # [batch size, output dimension]
-                #print(x_segment.shape,c_segment.shape)
-                pred = model(x_segment, c_segment)
+                pred = model(x_segment, c_segment, id_segeent)
 
                 if output_dimension == 1:
                     label = y[:, i, window_sz // 2].unsqueeze(-1)
@@ -162,13 +164,13 @@ def eval(model, loader, output = False):
                 if output:
                     if output_dimension == 1:
                         for j in range(y.shape[0]):
-                            writer.writerow([id, np.array(label[j,0].cpu()), "-", np.array(pred[j,0].cpu()),\
+                            writer.writerow([identity, np.array(label[j,0].cpu()), "-", np.array(pred[j,0].cpu()),\
                                              "-"])
                     if output_dimension == 2:
                         for j in range(y.shape[0]):
-                            writer.writerow([id, np.array(label[j, 0].cpu()), np.array(label[j, 1].cpu()), np.array(pred[j, 0].cpu()), \
+                            writer.writerow([identity, np.array(label[j, 0].cpu()), np.array(label[j, 1].cpu()), np.array(pred[j, 0].cpu()), \
                                             np.array(pred[j, 1].cpu())])
-                        id += 1
+                    identity += 1
             loss_mse += F.mse_loss(label_segment, pred_segment)*y.shape[0]
             #print(label_segment, pred_segment, mape_loss(label_segment, pred_segment))
             loss_mape += mape_loss(label_segment, pred_segment)*y.shape[0]
@@ -180,17 +182,18 @@ def eval(model, loader, output = False):
 
 def train():
     # load data
-    train_db = ObdData(root=data_root, mode="train", percentage=10, window_size=window_sz,\
+    train_db = ObdData(root=data_root, mode="train",fuel=True, percentage=10, window_size=window_sz,\
                        path_length=train_path_length, label_dimension=output_dimension, pace=pace_train,
                        withoutElevation=False)
-    val_db = ObdData(root=data_root, mode="val", percentage=10, window_size=window_sz,\
+    val_db = ObdData(root=data_root, mode="val",fuel=True, percentage=10, window_size=window_sz,\
                      path_length=train_path_length, label_dimension=output_dimension, pace=pace_test,
                      withoutElevation=False)
     train_loader = DataLoader(train_db, batch_size=batchsz, num_workers=0)
     val_loader = DataLoader(val_db, batch_size=batchsz, num_workers=0)
     viz = visdom.Visdom()
     # Create a new model or load an existing one.
-    model = AttentionBlk(feature_dim=feature_dimension,embedding_dim=[4,2,2,2,2,4,4],num_heads=head_number,output_dimension=output_dimension)
+    model = ConstGat(n2v_dim=32, attention_dim=32, feature_dim=feature_dimension, embedding_dim=[4, 2, 2, 2, 2, 4, 4], num_heads=head_number,
+             output_dimension=output_dimension)
     # if os.path.exists(ckpt_path):
     #     print('Reloading model parameters..')
     #     model.load_state_dict(torch.load(ckpt_path, map_location=device))
@@ -206,13 +209,27 @@ def train():
     for p in model.parameters():
         if p.dim() > 1:
             nn.init.xavier_uniform_(p)
+
     model.to(device)
+
+
+
+    model.load_state_dict(torch.load(old_ckpt_path, map_location=device))
+    for param in model.parameters():
+         param.requires_grad = False
+    model.feed_forward.layer1.weight.requires_grad = True
+    model.feed_forward.layer1.bias.requires_grad = True
+    model.feed_forward.layer2.weight.requires_grad = True
+    model.feed_forward.layer2.bias.requires_grad = True
+    # model.n2v.load_state_dict(torch.load('node2vec.mdl'))
+    # model.n2v.embedding.weight.requires_grad = True
     print(model)
     print(next(model.parameters()).device)
     p = sum(map(lambda p: p.numel(), model.parameters()))
     print("number of parameters:", p)
 
-    optimizer = optim.Adam(model.parameters(), lr=lr, betas=(0.9, 0.98), eps=1e-9)
+
+    optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=lr, betas=(0.9, 0.98), eps=1e-9)
     schedule = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="min", factor=0.5, patience=10)
 
     criterion = nn.MSELoss()
@@ -225,10 +242,11 @@ def train():
     viz.line([0], [-1], win='learning rate', opts=dict(title='learning rate'))
     for epoch in range(epochs):
         model.train()
-        for step, (x, y, c) in tqdm(enumerate(train_loader)):
+        for step, (x, y, c, id) in tqdm(enumerate(train_loader)):
             # x: numerical features [batch, path length, window size, feature dimension]
             # y: label [batch, path length, window size, (label dimension)]
             # c: categorical features [batch, number of categorical features, path length, window size]
+            # id: node2vec [batch, path length, window size]
             #x, y, c = x.to(device), y.to(device), c.to(device)
 
             # For each batch, predict fuel consumption/time for each segment in a path and sum them
@@ -245,8 +263,10 @@ def train():
                 x_segment = x[:, i, :, :]
                 # [batch, categorical_dim, window size]
                 c_segment = c[:, :, i, :]
+                # [batch, window size]
+                id_segeent = id[:,i,:]
                 # [batch size, output dimension]
-                pred = model(x_segment, c_segment)
+                pred = model(x_segment, c_segment,id_segeent)
 
                 # [batch size, output dimension]
                 pred_segment += pred
@@ -295,27 +315,21 @@ def train():
     print("best_epoch:", best_epoch, "best_mape(%):", np.array(best_mape.cpu())*100, "best_mse:", np.array(best_mse.cpu()))
 
 
-def test(test_path_length, test_pace, output = False):
+def test(model, test_path_length, test_pace, output = False):
     """
+
     :param output: "True" -> output the estimation results to output_root
     :return:
     """
 
     # load an existing model.
-    test_db = ObdData(root=data_root, mode="test", percentage=10, window_size=window_sz,\
+    test_db = ObdData(root=data_root, mode="test",fuel=True, percentage=10, window_size=window_sz,\
                       path_length=test_path_length, label_dimension=output_dimension, pace=test_pace,
                       withoutElevation=False)
 
     test_loader = DataLoader(test_db, batch_size=batchsz, num_workers=0)
 
-    # load an existing model.
-    model = AttentionBlk(feature_dim=feature_dimension,embedding_dim=[4,2,2,2,2,4,4],num_heads=head_number,output_dimension=output_dimension)
-    if os.path.exists(ckpt_path):
-        print('Reloading model parameters..')
-        model.load_state_dict(torch.load(ckpt_path, map_location=device))
-    else:
-        print('Error: no existing model')
-    model.to(device)
+
     #print(model)
     p = sum(map(lambda p: p.numel(), model.parameters()))
     #print("number of parameters:", p)
@@ -332,6 +346,16 @@ def main(mode, output = False):
     if mode == "train":
         train()
     elif mode == "test":
+        # load an existing model.
+        model = ConstGat(n2v_dim=32, attention_dim=32, feature_dim=feature_dimension,
+                         embedding_dim=[4, 2, 2, 2, 2, 4, 4], num_heads=head_number,
+                         output_dimension=output_dimension)
+        if os.path.exists(ckpt_path):
+            print('Reloading model parameters..')
+            model.load_state_dict(torch.load(ckpt_path, map_location=device))
+        else:
+            print('Error: no existing model')
+        model.to(device)
         # length of path used for test
         test_path_length_list = [1,2,5,10,20,50,100,200]
         for length in test_path_length_list:
@@ -340,12 +364,18 @@ def main(mode, output = False):
                 pace_test = length
                 print("pace test has been changed to:", pace_test)
             print("test path length:",length)
-            test(length,pace_test, output = output)
+            test(model, length,pace_test, output = output)
     return
 
 
 
 if __name__ == '__main__':
     #main("test")
-    main("test", output = True)
-    #main("train")
+    #main("test", output = True)
+    main("train")
+
+# 602 parameters
+# test_length_path = [1,2,5,10,20,50,100,200,500]
+# mape =  [878.4875869750977,104.24556732177734,35.02033352851868,20.90749442577362,14.545997977256775,10.099445283412933,7.709670811891556,6.324310600757599,5.235186591744423]
+
+#

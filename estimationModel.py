@@ -4,7 +4,6 @@ from torch.utils.data import DataLoader
 import numpy as np
 import gc
 from tqdm import tqdm
-from torchinterp1d import Interp1d
 import math
 
 class EstimationModel:
