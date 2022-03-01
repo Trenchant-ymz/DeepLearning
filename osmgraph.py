@@ -245,7 +245,7 @@ class OsmGraph:
         return length
 
     def totalEnergy(self, path):
-        print(1)
+        #print(1)
         return self.__calculateValue(path, "fuel")
 
     def totalTime(self, path):
@@ -272,8 +272,8 @@ class OsmGraph:
             # print(numericalFeatures, categoricalFeatures)
             addValue = estimationModel.predictFromData(numericalFeatures, categoricalFeatures)
             value += addValue
-            if path[i] in [58029, 59122, 62170, 6004, 52169]:
-                print(value)
+            # if path[i] in [58029, 59122, 62170, 6004, 52169]:
+            #     print(value)
             pointList.append((str(window.midSeg), numericalFeatures[1], categoricalFeatures[1], addValue, value))
         f = estimationType+'.txt'
         filename = open(f, 'w')

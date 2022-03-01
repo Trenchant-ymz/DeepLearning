@@ -36,8 +36,8 @@ class PositionwiseFeedForward(nn.Module):
 
 class Pigat(nn.Module):
 
-    def __init__(self, feature_dim, embedding_dim, num_heads, output_dimension,n2v_dim):
-        super(AttentionBlk, self).__init__()
+    def __init__(self, feature_dim, embedding_dim, num_heads, output_dimension,n2v_dim,attention_dim = 64):
+        super(Pigat, self).__init__()
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         #self.n2v = N2V('node2vec.mdl')
         open_file = open("edge_index.pkl", "rb")
@@ -47,7 +47,7 @@ class Pigat(nn.Module):
                               context_size=10, walks_per_node=10,
                               num_negative_samples=1, p=1, q=1, sparse=True)
 
-
+        self.attention_dim = attention_dim
         self.embedding_dim = embedding_dim
         self.feature_dim = feature_dim
         self.total_embed_dim = self.feature_dim + sum(self.embedding_dim)+ n2v_dim
@@ -69,10 +69,12 @@ class Pigat(nn.Module):
         # 0-16
         self.embedding_endpoint_u = nn.Embedding(17, self.embedding_dim[5])
         self.embedding_endpoint_v = nn.Embedding(17, self.embedding_dim[6])
-        self.selfattn = nn.MultiheadAttention(embed_dim= self.total_embed_dim, num_heads= self.num_heads)
-        self.norm = LayerNorm(self.total_embed_dim )
-        self.feed_forward = PositionwiseFeedForward(self.total_embed_dim)
-        self.linear = nn.Linear(self.total_embed_dim,self.output_dimension)
+        self.linearq = nn.Linear(self.total_embed_dim, self.attention_dim)
+        self.linearx = nn.Linear(self.total_embed_dim, self.attention_dim)
+        self.selfattn = nn.MultiheadAttention(embed_dim= self.attention_dim, num_heads= self.num_heads)
+        self.norm = LayerNorm(self.attention_dim )
+        self.feed_forward = PositionwiseFeedForward(self.attention_dim)
+        self.linear = nn.Linear(self.attention_dim,self.output_dimension)
         self.activate = nn.Softplus()
 
 
@@ -110,6 +112,8 @@ class Pigat(nn.Module):
         # q -> [1, batch, feature dimension+ sum embedding dimension]
         # middle of the window
         q = x[x.shape[0] // 2, :, :].unsqueeze(0)
+        q = F.relu(self.linearq(q))
+        x = F.relu(self.linearx(x))
         # x -> [windowsz, batch, feature dimension+ sum embedding dimension]
         x_output, output_weight = self.selfattn(q,x,x)
         # x_output -> [1, batchsz, feature dimension+ sum embedding dimension]

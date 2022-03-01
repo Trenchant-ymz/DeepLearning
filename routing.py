@@ -1,17 +1,18 @@
 import numpy as np
 import os
 import pandas as pd
-from osmgraph import GraphFromBbox, GraphFromHmlFile, GraphFromGdfs
-from spaitalShape import Point, OdPair, Box
-from edgeGdfPreprocessing import edgePreprocessing
+from code.osmgraph import GraphFromBbox, GraphFromHmlFile, GraphFromGdfs
+from code.spaitalShape import Point, OdPair, Box
+from code.edgeGdfPreprocessing import edgePreprocessing
 import plotly.graph_objects as go
 import plotly
 import osmnx as ox
 import math
 import time
-from estimationModel import EstimationModel, MultiTaskEstimationModel
-from lookUpTable import LookUpTable
+from code.estimationModel import EstimationModel, MultiTaskEstimationModel
+from code.lookUpTable import LookUpTable
 import gc
+import json
 
 # Profiling: python -m cProfile -o profile.pstats routing.py
 # Visualize profile: snakeviz profile.pstats
@@ -19,13 +20,17 @@ import gc
 # packages: torch, osmnx = 0.16.1, tqdm, bintrees, plotly
 
 class LocationRequest:
-    def __init__(self, origin, destination, distance):
+    def __init__(self, origin, destination, temperature, mass, dayOfTheWeek , timeOfTheDay, boundingBox):
         '''
-
         :param origin: (longitude, latitude)
         :param destination: (longitude, latitude)
-        :param distance: max distance from murphy company (miles)
+        :param temperature: 1  # temperature === 1 since we don't use temperature as a feature right now
+        :param mass: kg
+        :param dayOfTheWeek: Monday => 1
+        :param timeOfTheDay: 9am => 9
+        :param boundingBox: bounding box for eco-routing
         '''
+
         # (longitude, latitude)
         self.origin = origin
         # test
@@ -35,28 +40,26 @@ class LocationRequest:
         self.destination = destination
         #self.destination = Point(-93.230358, 44.973583)
 
-        # from murphy company (-93.22025, 44.9827), travel 70 miles
-        # self.distance = distance*1609.34 # mile->km
-        # bbox = ox.utils_geo.bbox_from_point((44.9827, -93.22025), dist=self.distance, project_utm = False, return_crs = False)
-        # self.boundingBox = Box(bbox[-1], bbox[-2], bbox[-3], bbox[-4])
-        # small bounding box
-        self.boundingBox = Box(-93.4975, -93.1850, 44.7458, 45.0045)
-        print(str(self.boundingBox))
         self.odPair = OdPair(self.origin, self.destination)
-        self.temperature = 1
-        self.mass = 23000
+        self.temperature = temperature
+        self.mass = mass
         # Monday
-        self.dayOfTheWeek = 1
-
+        self.dayOfTheWeek = dayOfTheWeek
         # 9 am
-        time = 9
+        time = timeOfTheDay
         self.timeOfTheDay = self.calTimeStage(time)
+        self.boundingBox = boundingBox
 
     def calTimeStage(self, t):
         return t // 4 + 1
 
 
 class ParameterForTableIni:
+    '''
+    Used in trainNewLUTable
+    Define the bins of lookup table
+    estMode = 'fuel'/ 'time'
+    '''
     def __init__(self, windowList, osmGraph, estMode = 'fuel'):
         self.temperatureList = [1]
         self.massList = [23000]
@@ -72,45 +75,76 @@ class ParameterForTableIni:
 def main():
     # Murphy depot => Shakopee East (Depot)
     origin, destination = Point(-93.2219, 44.979), Point(-93.4620, 44.7903)
+    temperature = 1
+    mass = 23000
+    # Monday
+    dayOfTheWeek = 1
+    # 9am
+    timeOfTheDay = 9
+    '''
+    #big bounding box: from murphy company (-93.22025, 44.9827), travel 70 miles
     distance = 70
-    locationRequest = LocationRequest(origin, destination,distance)
+    distance = distance*1609.34 # mile->km
+    bbox = ox.utils_geo.bbox_from_point((44.9827, -93.22025), dist=self.distance, project_utm = False, return_crs = False)
+    boundingBox = Box(bbox[-1], bbox[-2], bbox[-3], bbox[-4])
+    '''
+    # small bounding box
+    boundingBox = Box(-93.4975, -93.1850, 44.7458, 45.0045)
+    # Request
+    locationRequest = LocationRequest(origin, destination, temperature, mass, dayOfTheWeek , timeOfTheDay, boundingBox)
+
     osmGraphInBbox = extractGraphOf(locationRequest.boundingBox)
     nodes, edges = osmGraphInBbox.graphToGdfs()
-    print(len(edges))
-    extractElevation(nodes, edges)
-    # for look-up-table method, the edges don't need to be preprocessed.
+
+    # extract elevation change of edges
+    extractElevation(nodes, edges, boundingBox)
+
+    # define lookUpTable to None if you don't want to use the lookuptable method
+    # lookUpTable = None
+
+
     edges = edgePreprocessing(nodes, edges, locationRequest.temperature, locationRequest.mass, locationRequest.dayOfTheWeek, locationRequest.timeOfTheDay)
+
     graphWithElevation = GraphFromGdfs(nodes, edges)
     graphWithElevation.removeIsolateNodes()
     print('Graph loaded!')
-    filenameFuel = "lUTableForFuelInBigBox"
+
+    # filename for lookup table
+    filenameFuel = "lUTableForFuel"
+
     # train new table and save it to filename.pkl
-    lookUpTable = trainNewLUTable(graphWithElevation, locationRequest, filenameFuel, mode="fuel")
+    #lookUpTable = trainNewLUTable(graphWithElevation, locationRequest, filenameFuel, mode="fuel")
+
     # load table from filename.pkl
-    #lookUpTable = LookUpTable(locationRequest, filename)
+    lookUpTable = LookUpTable(locationRequest, filenameFuel)
+
     #windowList = graphWithElevation.extractAllWindows(4)
     #print(len(lookUpTable))
 
-    # define lookUpTable to None if you don't want to use the lookuptable method
-    #lookUpTable = None
 
-    # shortest route
-    shortestNodePath = findShortestPath(graphWithElevation, locationRequest)
-    shortestPath = nodePathTOEdgePath(shortestNodePath, edges)
-    calAndPrintPathAttributes(graphWithElevation, shortestPath, "shortestPath")
     # eco route
     ecoRoute, energyOnEcoRoute, ecoEdgePath = findEcoPathAndCalEnergy(graphWithElevation, locationRequest, lookUpTable)
     print(len(ecoEdgePath))
     calAndPrintPathAttributes(graphWithElevation, ecoEdgePath, "ecoRoute")
+    ecoRouteFileName= 'ecoRouteTest.json'
+    saveRoutes(ecoEdgePath, graphWithElevation.getEdges(), ecoRouteFileName)
+
+    # shortest route
+    # shortestNodePath = findShortestPath(graphWithElevation, locationRequest)
+    # shortestPath = nodePathTOEdgePath(shortestNodePath, edges)
+    # calAndPrintPathAttributes(graphWithElevation, shortestPath, "shortestPath")
+
     # fastest route
     filenameTime = "lookUpTableForTime"
-    lookUpTable = trainNewLUTable(graphWithElevation, locationRequest, filenameTime, mode='time')
-    fastestPath, shortestTime, fastestEdgePath = findFastestPathAndCalTime(graphWithElevation, locationRequest, lookUpTable)
-    calAndPrintPathAttributes(graphWithElevation, fastestEdgePath, "fastestPath")
+    # lookUpTable = trainNewLUTable(graphWithElevation, locationRequest, filenameTime, mode='time')
+    # lookUpTable = LookUpTable(locationRequest, filenameTime)
+    # fastestPath, shortestTime, fastestEdgePath = findFastestPathAndCalTime(graphWithElevation, locationRequest, lookUpTable)
+    # calAndPrintPathAttributes(graphWithElevation, fastestEdgePath, "fastestPath")
+
     # save the routing results to the "./results/filename.html"
-    plotRoutes([ecoEdgePath, fastestEdgePath, shortestPath], graphWithElevation.getEdges(), ['green','red','blue'], ['eco route','fastest route','shortest route'], 'routingresults')
-    #plotRoutes([ecoEdgePath], graphWithElevation.getEdges(), ['green'],['eco route'], 'testBigBox')
-    #graphWithElevation.plotPathList([shortestNodePath, ecoRoute, fastestPath],'routing result.pdf')
+    # plotRoutes([ecoEdgePath, fastestEdgePath, shortestPath], graphWithElevation.getEdges(), ['green','red','blue'], ['eco route','fastest route','shortest route'], 'routingresults')
+    # plotRoutes([ecoEdgePath], graphWithElevation.getEdges(), ['green'],['eco route'], 'testBigBox')
+    # graphWithElevation.plotPathList([shortestNodePath, ecoRoute, fastestPath],'routing result.pdf')
 
 
 def trainNewLUTable(graphWithElevation, locationRequest, filename, mode='fuel'):
@@ -138,16 +172,16 @@ def extractGraphOf(boundingBox):
     return osmGraph
 
 
-def extractElevation(nodes, edges):
-    extractNodesElevation(nodes)
+def extractElevation(nodes, edges, boundingBox):
+    extractNodesElevation(nodes, boundingBox)
     extractEdgesElevation(nodes, edges)
 
 
-def extractNodesElevation(nodes):
-    nodesElevation = pd.read_csv(os.path.join("statistical data", "nodesWithElevationSmall.csv"), index_col=0)
+def extractNodesElevation(nodes, boundingBox):
+    filename = "nodesWithElevation"+str(boundingBox)+".csv"
+    nodesElevation = pd.read_csv(os.path.join("statistical data", filename), index_col=0)
     nodes['indexId'] = nodes.index
     nodes['elevation'] = nodes.apply(lambda x: nodesElevation.loc[x['indexId'], 'MeanElevation'], axis=1)
-
 
 
 def extractEdgesElevation(nodesWithElevation, edges):
@@ -230,6 +264,15 @@ def plotRoutes(routeList, network_gdf, colorLists, nameLists, filename):
                     long_edge.append(l1[k])
                     lat_edge.append(l2[k])
         if i == 0:
+            with open("ecoRouteLong.json", 'w') as f:
+                # indent=2 is not needed but makes the file human-readable
+                json.dump(long_edge, f, indent=2)
+            with open("ecoRouteLat.json", 'w') as f:
+                # indent=2 is not needed but makes the file human-readable
+                json.dump(lat_edge, f, indent=2)
+            with open("ecoRoute.json", 'w') as f:
+                # indent=2 is not needed but makes the file human-readable
+                json.dump(list(zip(lat_edge, long_edge)), f, indent=2)
             fig = go.Figure(go.Scattermapbox(
                 name = nameLists[i],
                 mode = "lines",
@@ -259,6 +302,36 @@ def plotRoutes(routeList, network_gdf, colorLists, nameLists, filename):
                             'zoom': zoom})
 
     plotly.offline.plot(fig,filename = os.path.join(directory,filename+'.html'),auto_open=True)
+
+def saveRoutes(route, network_gdf, filename):
+    directory = './results'
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
+    long_edge = []
+    lat_edge = []
+    for j in route:
+        e = network_gdf.loc[j]
+        if 'geometry' in e:
+            xs, ys = e['geometry'].xy
+            z = list(zip(xs, ys))
+            l1 = list(list(zip(*z))[0])
+            l2 = list(list(zip(*z))[1])
+            for k in range(len(l1)):
+                long_edge.append(l1[k])
+                lat_edge.append(l2[k])
+    with open(os.path.join(directory,filename), 'w') as f:
+        # indent=2 is not needed but makes the file human-readable
+        json.dump(list(zip(lat_edge, long_edge)), f, indent=2)
+
+    # with open("ecoRouteLong.json", 'w') as f:
+    #     # indent=2 is not needed but makes the file human-readable
+    #     json.dump(long_edge, f, indent=2)
+    # with open("ecoRouteLat.json", 'w') as f:
+    #     # indent=2 is not needed but makes the file human-readable
+    #     json.dump(lat_edge, f, indent=2)
+
+
 
 '''
 def calAndPrintPathAttributes(osmGraph, path, edgePath, pathname):

@@ -89,6 +89,7 @@ class ObdData(Dataset):
         self.data_y = torch.Tensor([x[1] for x in self.data]).to(device)
         self.data_c = torch.LongTensor([x[5:12] for x in self.data]).to(device)
         self.id = torch.LongTensor([x[-1] for x in self.data]).to(device)
+        print('number of paths(mode={m},fuel={f})'.format(m=self.mode,f=self.fuel), self.__len__())
 
 
     def load_csv(self, filename):
@@ -102,7 +103,7 @@ class ObdData(Dataset):
         # {trip-id: [13 dimensions, windowsz, feature]}
         data_dict_trip_id = dict()
         data_list = []
-
+        #print(os.path.join(self.root, filename))
         if not os.path.exists(os.path.join(self.root, filename)):
             print("Warning: Wrong File Directory")
         else:

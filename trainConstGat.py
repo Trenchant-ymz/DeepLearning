@@ -20,7 +20,7 @@ batchsz = 512
 lr = 1e-3
 
 # number of training epochs
-epochs = 3000
+epochs = 1500
 # epochs = 0
 
 # random seed
@@ -41,9 +41,11 @@ feature_dimension = 6
 head_number = 1
 
 # length of path used for training/validation
-train_path_length = 10
-# length of path used for test
-test_path_length = 1
+train_path_length = 20
+
+# weight of the segment task
+#omega_seg = 0.1
+
 
 # window size 3 best
 window_sz = 3
@@ -55,9 +57,7 @@ pace_test = pace_train
 if pace_train>train_path_length:
     pace_train = train_path_length
     print("pace train has been changed to:", pace_train)
-if pace_test>test_path_length:
-    pace_test = test_path_length
-    print("pace test has been changed to:",pace_test)
+
 
 use_cuda = torch.cuda.is_available()
 if use_cuda:
@@ -75,10 +75,11 @@ else:
 # output_root = "/content/drive/MyDrive/Colab_Notebooks/DeepLearning/prediction_result.csv"
 # local
 #ckpt_path = "best_13d_fuel.mdl"
-ckpt_path = os.path.join(os.getcwd(),"pretrained models/constGat1percent.mdl")
+ckpt_path = os.path.join(os.getcwd(),"pretrained models/constGat20.mdl")
+#ckpt_path = os.path.join(os.getcwd(),"pretrained models/cgtrans.mdl")
 #ckpt_path = "pretrained models/gatfuelOctDropAddRelu.mdl"
-data_root = "model_data_newOct"
-#data_root = "normalized data"
+#data_root = "model_data_newNov1perc"
+data_root = "ExpDataset/recursion12"
 #data_root = "DataDifferentiated"
 output_root = "prediction_result_constgat.csv"
 
@@ -121,6 +122,12 @@ def eval(model, loader, output = False):
         writer.writerow(["id", "ground truth fuel(l)", "ground truth time (s)", "estimated fuel (l)", "estimated time (s)"])
     loss_mape = 0
     loss_mse = 0
+    loss_mse_1 = 0
+    loss_mse_2 =0
+    mse = 0
+    mae = 0
+    mseCriterion = nn.MSELoss()
+    maeCriterion = nn.L1Loss()
     cnt = 0
     identity = 0
     model.eval()
@@ -170,21 +177,29 @@ def eval(model, loader, output = False):
                             writer.writerow([identity, np.array(label[j, 0].cpu()), np.array(label[j, 1].cpu()), np.array(pred[j, 0].cpu()), \
                                             np.array(pred[j, 1].cpu())])
                     identity += 1
-            loss_mse += F.mse_loss(label_segment, pred_segment)*y.shape[0]
+                if i == 0:
+                    seg_loss = F.huber_loss(label, pred)
+                else:
+                    seg_loss += F.huber_loss(label, pred)
+
+            loss_mse += (mape_loss(label_segment, pred_segment) + seg_loss/x.shape[1])*y.shape[0]
             #print(label_segment, pred_segment, mape_loss(label_segment, pred_segment))
             loss_mape += mape_loss(label_segment, pred_segment)*y.shape[0]
+            mse += mseCriterion(label_segment, pred_segment)*y.shape[0]
+            mae += maeCriterion(label_segment, pred_segment)*y.shape[0]
             cnt += y.shape[0]
     if output:
         csvFile.close()
-    return loss_mape/cnt, loss_mse/cnt
+    #print('mape', loss_mse_1, loss_mse_2, loss_mse, loss_mape,cnt)
+    return loss_mape/cnt, loss_mse/cnt, mse/cnt, mae/cnt
 
 
 def train():
     # load data
-    train_db = ObdData(root=data_root, mode="train",fuel=True, percentage=10, window_size=window_sz,\
+    train_db = ObdData(root=data_root, mode="train",fuel=False, percentage=20, window_size=window_sz,\
                        path_length=train_path_length, label_dimension=output_dimension, pace=pace_train,
                        withoutElevation=False)
-    val_db = ObdData(root=data_root, mode="val",fuel=True, percentage=10, window_size=window_sz,\
+    val_db = ObdData(root=data_root, mode="val",fuel=False, percentage=20, window_size=window_sz,\
                      path_length=train_path_length, label_dimension=output_dimension, pace=pace_test,
                      withoutElevation=False)
     train_loader = DataLoader(train_db, batch_size=batchsz, num_workers=0)
@@ -227,7 +242,7 @@ def train():
     optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=lr, betas=(0.9, 0.98), eps=1e-9)
     schedule = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="min", factor=0.5, patience=10)
 
-    criterion = nn.MSELoss()
+    criterion = nn.L1Loss()
     global_step = 0
     best_mape, best_mse, best_epoch = torch.tensor(float("inf")), torch.tensor(float("inf")), 0
     viz.line([0],[-1], win='train_mse', opts=dict(title='train_mse'))
@@ -277,8 +292,14 @@ def train():
 
                 # [batch size, output dimension]
                 label_segment += label
+
+                if i == 0:
+                    seg_loss = F.huber_loss(label, pred)
+                else:
+                    seg_loss += F.huber_loss(label, pred)
+
                 #label_segment_denormalized += denormalize(label)
-            loss = criterion(label_segment, pred_segment)
+            loss = mape_loss(label_segment, pred_segment) + seg_loss/x.shape[1]
             #loss = mape_loss(label_segment, pred_segment)
             #print(loss)
 
@@ -294,7 +315,7 @@ def train():
         viz.line([learning_rate], [global_step], win='learning rate', update='append')
         # print("epoch:", epoch, "test_mse:", loss)
         if epoch % 1 == 0:
-            val_mape, val_mse = eval(model, val_loader)
+            val_mape, val_mse, _, _ = eval(model, val_loader)
             # schedule.step(val_mse)
             print("epoch:", epoch, "val_mape(%):", np.array(val_mape.cpu())*100, "val_mse:", np.array(val_mse.cpu()))
             print("epoch:", epoch,  "train_mse:", loss)
@@ -318,7 +339,7 @@ def test(model, test_path_length, test_pace, output = False):
     """
 
     # load an existing model.
-    test_db = ObdData(root=data_root, mode="test",fuel=True, percentage=10, window_size=window_sz,\
+    test_db = ObdData(root=data_root, mode="test",fuel=False, percentage=20, window_size=window_sz,\
                       path_length=test_path_length, label_dimension=output_dimension, pace=test_pace,
                       withoutElevation=False)
 
@@ -328,9 +349,10 @@ def test(model, test_path_length, test_pace, output = False):
     #print(model)
     p = sum(map(lambda p: p.numel(), model.parameters()))
     #print("number of parameters:", p)
-    test_mape, test_mse = eval(model, test_loader, output = output)
+    test_mape, test_mse, mse,mae = eval(model, test_loader, output = output)
     print("test_mape(%):", np.array(test_mape.cpu()) * 100)
-    print("test_mse:", np.array(test_mse.cpu()))
+    print("test_rmse:", np.array(mse.cpu()) ** 0.5 / 100)
+    print("test_mae:", np.array(mae.cpu()) / 100)
 
 
 def main(mode, output = False):
@@ -366,8 +388,8 @@ def main(mode, output = False):
 
 if __name__ == '__main__':
     #main("test")
-    main("test", output = True)
-    #main("train")
+    #main("test", output = True)
+    main("train")
 
 # 602 parameters
 # test_length_path = [1,2,5,10,20,50,100,200,500]
