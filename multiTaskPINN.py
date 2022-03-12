@@ -10,6 +10,10 @@ import csv
 import time
 import visdom
 from tqdm import tqdm
+
+import torch.profiler
+import torch.utils.data
+
 #from torchinterp1d import Interp1d
 import math
 
@@ -58,7 +62,7 @@ batchsz = 512
 lr = 1e-3
 
 # number of training epochs
-epochs = 250
+epochs = 10
 # epochs = 0
 
 # random seed
@@ -439,9 +443,15 @@ def train():
     viz.line([0], [-1], win='train_fuel_mape', opts=dict(title='train_fuel_mape'))
     viz.line([0], [-1], win='val_time_mape', opts=dict(title='val_time_mape'))
     viz.line([0], [-1], win='val_fuel_mape', opts=dict(title='val_fuel_mape'))
+    prof = torch.profiler.profile(
+        schedule=torch.profiler.schedule(wait=1, warmup=1, active=3, repeat=2),
+        on_trace_ready=torch.profiler.tensorboard_trace_handler('./log/resnet18'),
+        record_shapes=True,
+        with_stack=True)
 
     for epoch in range(epochs):
         model.train()
+        prof.start()
         for step, ((xt, yt, ct, idt),(xf,yf,cf,idf)) in tqdm(enumerate(zip(train_loader_time,train_loader_fuel))):
             # x: numerical features [batch, path length, window size, feature dimension]
             # y: label [batch, path length, window size, (label dimension)]
@@ -461,6 +471,8 @@ def train():
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
+            prof.step()
+        prof.stop()
             #print(dict(model.named_parameters()))
 
         viz.line([loss.item()], [global_step], win='train_mse', update='append')
