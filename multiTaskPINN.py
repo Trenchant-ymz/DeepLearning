@@ -21,6 +21,11 @@ import math
 
 # Before running the code, run 'python -m visdom.server' in the terminal to open visdom panel.
 
+# pytorch profiler on tensorboard 'tensorboard --logdir=./log'
+
+# Profiling: python -m cProfile -o profile.pstats multiTaskPINN.py
+# Visualize profile: snakeviz profile.pstats
+
 # divide a segment equally into n parts according to the length
 lengthOfVelocityProfile = 60
 tParts = lengthOfVelocityProfile # divide time into several parts
@@ -46,7 +51,7 @@ stdOfMass = 8224.139199
 omega_acc = 0
 # weight of jerk loss (MSE)
 omega_jerk = 1e-3
-
+#omega_jerk = 0
 #omega_seg_fuel = 0.1
 #omega_seg_time = omega_seg_fuel
 
@@ -62,7 +67,7 @@ batchsz = 512
 lr = 1e-3
 
 # number of training epochs
-epochs = 10
+epochs = 1
 # epochs = 0
 
 # random seed
@@ -80,7 +85,7 @@ feature_dimension = 6
 # "road_type", "time_stage", "week_day", "lanes", "bridge", "endpoint_u", "endpoint_v"
 
 # multi-head attention not influential
-head_number = 16
+head_number = 1
 # length of path used for training/validation
 train_path_length = 20
 
@@ -100,15 +105,15 @@ if pace_train>train_path_length:
 
 use_cuda = torch.cuda.is_available()
 if use_cuda:
-    #print('Using GPU..')
+    print('Using GPU..')
     device = torch.device("cuda")
 else:
     device = torch.device("cpu")
 
 # local
-ckpt_path = os.path.join(os.getcwd(),"multitaskModels/pinn20MAE.mdl")
-#data_root = "model_data_newNov1perc"
-data_root = "ExpDataset/recursion20"
+ckpt_path = os.path.join(os.getcwd(),r"multitaskModels/pinnMultihead.mdl")
+data_root = "model_data_newNov1perc"
+#data_root = "ExpDataset/recursion20"
 output_root = "prediction_result.csv"
 
 # load data
@@ -153,20 +158,20 @@ def mape_loss(label, pred):
 #     # plt.show()
 #     return intetpResult,tNew
 
-#version 1 vd=>vt
-def vd2vt(velocityProfile, length):
-    '''
-
-    :param velocityProfile: velocityProfile: velocity profiel (uniform length sampling)
-    :param length: length: total length of the segment
-    :return: tAxis: the axis of time of the velocity profile
-    '''
-    lengthOfEachPart = length / (velocityProfile.shape[1] - 1)
-    averageV = velocityProfile[:,0:-1] + velocityProfile[:,1:]
-    tOnSubPath = (2 * lengthOfEachPart).unsqueeze(-1) / averageV
-    tAxis = torch.matmul(tOnSubPath, torch.triu(torch.ones(tOnSubPath.shape[1],tOnSubPath.shape[1])).to(device))
-    tAxis = torch.cat([torch.zeros([tOnSubPath.shape[0],1]).to(device),tAxis],dim=-1)
-    return velocityProfile,tAxis
+# #version 1 vd=>vt
+# def vd2vt(velocityProfile, length):
+#     '''
+#
+#     :param velocityProfile: velocityProfile: velocity profiel (uniform length sampling)
+#     :param length: length: total length of the segment
+#     :return: tAxis: the axis of time of the velocity profile
+#     '''
+#     lengthOfEachPart = length / (velocityProfile.shape[1] - 1)
+#     averageV = velocityProfile[:,0:-1] + velocityProfile[:,1:]
+#     tOnSubPath = (2 * lengthOfEachPart).unsqueeze(-1) / averageV
+#     tAxis = torch.matmul(tOnSubPath, torch.triu(torch.ones(tOnSubPath.shape[1],tOnSubPath.shape[1])).to(device))
+#     tAxis = torch.cat([torch.zeros([tOnSubPath.shape[0],1]).to(device),tAxis],dim=-1)
+#     return velocityProfile,tAxis
 
 
 #version 1 vt=>calculate t
@@ -179,7 +184,13 @@ def vt2t(velocityProfile, length):
     '''
     mul = torch.cat([torch.ones([1, 1]), 2 * torch.ones([velocityProfile.shape[1] - 2, 1]),\
                        torch.ones([1, 1])], dim=0).to(device)
+    # mul =  2 * torch.ones([velocityProfile.shape[1], 1]).to(device)
+    # mul[0,0] = mul[-1,0]= 1
     vAverage = torch.matmul(velocityProfile, mul) / 2
+    # vAverage_tensor = (velocityProfile[:, :-1] + velocityProfile[:, 1:]) / 2
+    # vAverage = torch.sum(vAverage_tensor, dim=1).unsqueeze(-1)
+    #print(vAverage_1, vAverage)
+    #assert torch.equal(vAverage_1, vAverage)
     tForOnePart = length.unsqueeze(-1) / vAverage
     tAxis = torch.arange(velocityProfile.shape[1]).unsqueeze(0).to(device) * tForOnePart
     return velocityProfile,tAxis
@@ -393,7 +404,7 @@ def train():
     train_sampler_fuel = torch.utils.data.RandomSampler(train_db_fuel, replacement=True, num_samples=len(train_db_time),
                                                    generator=None)
     train_loader_fuel = DataLoader(train_db_fuel, sampler = train_sampler_fuel, batch_size=batchsz, num_workers=0)
-    train_loader_time  = DataLoader(train_db_time, batch_size=batchsz, num_workers=0)
+    train_loader_time = DataLoader(train_db_time, batch_size=batchsz, num_workers=0)
 
     val_db_fuel = ObdData(root=data_root, mode="val", fuel=True, percentage=20, window_size=window_sz,\
                      path_length=train_path_length, label_dimension=1, pace=pace_test,
@@ -427,7 +438,7 @@ def train():
 
     optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=lr, betas=(0.9, 0.98), eps=1e-9)
     schedule = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="min", factor=0.5, patience=10)
-
+    train_loss = []
     #for p in filter(lambda p: p.requires_grad, model.parameters()): print(p)
     #criterion = nn.MSELoss()
     global_step = 0
@@ -443,69 +454,70 @@ def train():
     viz.line([0], [-1], win='train_fuel_mape', opts=dict(title='train_fuel_mape'))
     viz.line([0], [-1], win='val_time_mape', opts=dict(title='val_time_mape'))
     viz.line([0], [-1], win='val_fuel_mape', opts=dict(title='val_fuel_mape'))
-    prof = torch.profiler.profile(
-        schedule=torch.profiler.schedule(wait=1, warmup=1, active=3, repeat=2),
-        on_trace_ready=torch.profiler.tensorboard_trace_handler('./log/resnet18'),
-        record_shapes=True,
-        with_stack=True)
+    # prof = torch.profiler.profile(activities=[torch.profiler.ProfilerActivity.CUDA],
+    #                               schedule=torch.profiler.schedule(wait=1, warmup=1, active=2),
+    #                               on_trace_ready=torch.profiler.tensorboard_trace_handler('./result', worker_name='worker2'),
+    #                               record_shapes=True, profile_memory=False, with_stack=True)
+    with torch.autograd.profiler.profile(with_stack=True, profile_memory=True, use_cuda=True) as prof:
+        for epoch in range(epochs):
+            model.train()
+            #prof.start()
+            for step, ((xt, yt, ct, idt),(xf,yf,cf,idf)) in tqdm(enumerate(zip(train_loader_time,train_loader_fuel))):
+                # x: numerical features [batch, path length, window size, feature dimension]
+                # y: label [batch, path length, window size, (label dimension)]
+                # c: categorical features [batch, number of categorical features, path length, window size]
+                #x, y, c = x.to(device), y.to(device), c.to(device)
 
-    for epoch in range(epochs):
-        model.train()
-        prof.start()
-        for step, ((xt, yt, ct, idt),(xf,yf,cf,idf)) in tqdm(enumerate(zip(train_loader_time,train_loader_fuel))):
-            # x: numerical features [batch, path length, window size, feature dimension]
-            # y: label [batch, path length, window size, (label dimension)]
-            # c: categorical features [batch, number of categorical features, path length, window size]
-            #x, y, c = x.to(device), y.to(device), c.to(device)
+                # For each batch, predict fuel consumption/time for each segment in a path and sum them
+                # [batch size, output dimension]
 
-            # For each batch, predict fuel consumption/time for each segment in a path and sum them
-            # [batch size, output dimension]
+                mse_time, loss_mape_time, _,_,_ = calLossOfPath(model, xt, yt, ct, idt, mode='time')
+                mse_fuel, loss_mape_fuel, _,_,_ = calLossOfPath(model, xf, yf, cf, idf, mode='fuel')
 
-            mse_time, loss_mape_time, _,_,_ = calLossOfPath(model, xt, yt, ct, idt, mode='time')
-            mse_fuel, loss_mape_fuel, _,_,_ = calLossOfPath(model, xf, yf, cf, idf, mode='fuel')
+                #loss = mape_loss(label_path, pred_path)
+                #print('loss',loss_fuel,loss_time)
+                loss = omega_fuel*mse_fuel + omega_time*mse_time
+                #print(loss)
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+            #     prof.step()
+            # prof.stop()
+                #print(dict(model.named_parameters()))
 
-            #loss = mape_loss(label_path, pred_path)
-            #print('loss',loss_fuel,loss_time)
-            loss = omega_fuel*mse_fuel + omega_time*mse_time
-            #print(loss)
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-            prof.step()
-        prof.stop()
-            #print(dict(model.named_parameters()))
-
-        viz.line([loss.item()], [global_step], win='train_mse', update='append')
-        viz.line([mse_time.item()], [global_step], win='train_fuel_mse', update='append')
-        viz.line([mse_fuel.item()], [global_step], win='train_time_mse', update='append')
+            viz.line([loss.item()], [global_step], win='train_mse', update='append')
+            viz.line([mse_time.item()], [global_step], win='train_fuel_mse', update='append')
+            viz.line([mse_fuel.item()], [global_step], win='train_time_mse', update='append')
 
 
-        viz.line([loss_mape_fuel.item()], [global_step], win='train_fuel_mape', update='append')
-        viz.line([loss_mape_time.item()], [global_step], win='train_time_mape', update='append')
+            viz.line([loss_mape_fuel.item()], [global_step], win='train_fuel_mape', update='append')
+            viz.line([loss_mape_time.item()], [global_step], win='train_time_mape', update='append')
+            train_loss.append(loss_mape_fuel.item())
+            schedule.step(loss)
+            learning_rate = optimizer.state_dict()['param_groups'][0]['lr']
+            viz.line([learning_rate], [global_step], win='learning rate', update='append')
 
-        schedule.step(loss)
-        learning_rate = optimizer.state_dict()['param_groups'][0]['lr']
-        viz.line([learning_rate], [global_step], win='learning rate', update='append')
+            # print("epoch:", epoch, "test_mse:", loss)
+            if epoch % 1 == 0:
+                val_mse, val_loss_fuel,val_loss_time, val_fuel_mape, val_time_mape, mse_fuel, mse_time, mae_fuel, mae_time = eval(model,val_loader_time, val_loader_fuel)
+                # schedule.step(val_mse)
+                print("epoch:", epoch, "val_mape_fuel(%):", np.array(val_fuel_mape.cpu())*100,"val_mape_time(%):", np.array(val_time_mape.cpu())*100, "val_mse:", np.array(val_mse.cpu()))
+                print("epoch:", epoch,  "train_mse:", loss.item())
+                if val_mse < best_mse:
+                    best_epoch = epoch
+                    best_mse = val_mse
+                    torch.save(model.state_dict(), ckpt_path)
+                viz.line([val_mse.item()], [global_step], win='val_mse', update='append')
+                viz.line([mse_fuel.item()], [global_step], win='val_fuel_mse', update='append')
+                viz.line([mse_time.item()], [global_step], win='val_time_mse', update='append')
+                viz.line([val_fuel_mape.item()], [global_step], win='val_fuel_mape', update='append')
+                viz.line([val_time_mape.item()], [global_step], win='val_time_mape', update='append')
 
-        # print("epoch:", epoch, "test_mse:", loss)
-        if epoch % 1 == 0:
-            val_mse, val_loss_fuel,val_loss_time, val_fuel_mape, val_time_mape, mse_fuel, mse_time, mae_fuel, mae_time = eval(model,val_loader_time, val_loader_fuel)
-            # schedule.step(val_mse)
-            print("epoch:", epoch, "val_mape_fuel(%):", np.array(val_fuel_mape.cpu())*100,"val_mape_time(%):", np.array(val_time_mape.cpu())*100, "val_mse:", np.array(val_mse.cpu()))
-            print("epoch:", epoch,  "train_mse:", loss.item())
-            if val_mse < best_mse:
-                best_epoch = epoch
-                best_mse = val_mse
-                torch.save(model.state_dict(), ckpt_path)
-            viz.line([val_mse.item()], [global_step], win='val_mse', update='append')
-            viz.line([mse_fuel.item()], [global_step], win='val_fuel_mse', update='append')
-            viz.line([mse_time.item()], [global_step], win='val_time_mse', update='append')
-            viz.line([val_fuel_mape.item()], [global_step], win='val_fuel_mape', update='append')
-            viz.line([val_time_mape.item()], [global_step], win='val_time_mape', update='append')
+            global_step += 1
 
-        global_step += 1
     print("best_epoch:", best_epoch, "best_mse:", np.array(best_mse.cpu()))
-
+    np.savetxt('trainLossPiNN.csv', train_loss, delimiter=',')
+    print(prof.key_averages(group_by_stack_n=5).table(sort_by='self_cpu_time_total', row_limit=5))
 
 
 def test(model, test_path_length, test_pace, output = False):
@@ -525,7 +537,6 @@ def test(model, test_path_length, test_pace, output = False):
 
     test_loader_time = DataLoader(test_db_time, batch_size=batchsz, num_workers=0)
     test_loader_fuel = DataLoader(test_db_fuel, batch_size=batchsz, num_workers=0)
-
     #print(model)
     #p = sum(map(lambda p: p.numel(), model.parameters()))
     #print("number of parameters:", p)
@@ -567,6 +578,7 @@ def main(mode, output = False):
 
 if __name__ == '__main__':
     main(input("mode="), output = False)
+
     #main("test")
     #main("train")
     # main("test", output = True)
