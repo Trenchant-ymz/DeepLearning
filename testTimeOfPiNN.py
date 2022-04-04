@@ -17,6 +17,7 @@ import torch.utils.data
 #from torchinterp1d import Interp1d
 import math
 
+#torch.backends.cudnn.benchmark = True
 
 
 # Before running the code, run 'python -m visdom.server' in the terminal to open visdom panel.
@@ -360,24 +361,39 @@ class FastTensorDataLoader:
         return self.n_batches
 
 
-def train():
-    # x_TimeTrain, y_TimeTrain, c_TimeTrain, id_TimeTrain = loadData(root=data_root, mode="train", fuel=False, percentage=20,
-    #                                                                window_size=window_sz,path_length=train_path_length,
-    #                                                                label_dimension=1, pace=pace_train, withoutElevation=False)
-    # train_loader_time = FastTensorDataLoader(x_TimeTrain, y_TimeTrain, c_TimeTrain, id_TimeTrain, batch_size=batchsz)
+def randomsampler(*tensors, num_samples):
+    dataset_len = tensors[0].shape[0]
+    r = torch.randint(0, dataset_len, (num_samples,))
+    tensors = [t[r] for t in tensors]
+    return tensors
 
-    train_db_fuel = ObdData(root=data_root, mode="train", fuel=True, percentage=20, window_size=window_sz,
-                            path_length=train_path_length, label_dimension=1, pace=pace_train,
-                            withoutElevation=False)
-    train_db_time = ObdData(root=data_root, mode="train", fuel=False, percentage=20, window_size=window_sz,
-                            path_length=train_path_length, label_dimension=1, pace=pace_train,
-                            withoutElevation=False)
+def train():
+    x_TimeTrain, y_TimeTrain, c_TimeTrain, id_TimeTrain = loadData(root=data_root, mode="train", fuel=False, percentage=20,
+                                                                   window_size=window_sz,path_length=train_path_length,
+                                                                   label_dimension=1, pace=pace_train, withoutElevation=False)
+    train_loader_time = FastTensorDataLoader(x_TimeTrain, y_TimeTrain, c_TimeTrain, id_TimeTrain, batch_size=batchsz)
+
+    x_FuelTrain, y_FuelTrain, c_FuelTrain, id_FuelTrain = loadData(root=data_root, mode="train", fuel=True, percentage=20,
+                                                                   window_size=window_sz,path_length=train_path_length,
+                                                                   label_dimension=1, pace=pace_train, withoutElevation=False)
+    print(x_FuelTrain.shape)
+    x_FuelTrain, y_FuelTrain, c_FuelTrain, id_FuelTrain = randomsampler(x_FuelTrain, y_FuelTrain, c_FuelTrain, id_FuelTrain, num_samples=x_TimeTrain.shape[0])
+    print(x_FuelTrain.shape)
+    train_loader_fuel = FastTensorDataLoader(x_FuelTrain, y_FuelTrain, c_FuelTrain, id_FuelTrain, batch_size=batchsz)
+    # train_db_time = ObdData(root=data_root, mode="train", fuel=False, percentage=20, window_size=window_sz,
+    #                         path_length=train_path_length, label_dimension=1, pace=pace_train,
+    #                         withoutElevation=False)
+    # train_loader_time = DataLoader(train_db_time, batch_size=batchsz, num_workers=0)
+    # train_db_fuel = ObdData(root=data_root, mode="train", fuel=True, percentage=20, window_size=window_sz,
+    #                         path_length=train_path_length, label_dimension=1, pace=pace_train,
+    #                         withoutElevation=False)
     # train_sampler_fuel = torch.utils.data.RandomSampler(train_db_fuel, replacement=True, num_samples=x_TimeTrain.shape[0],
     #                                                     generator=None)
-    train_sampler_fuel = torch.utils.data.RandomSampler(train_db_fuel, replacement=True, num_samples=len(train_db_time),
-                                                        generator=None)
-    train_loader_fuel = DataLoader(train_db_fuel, sampler=train_sampler_fuel, batch_size=batchsz, num_workers=0)
-    train_loader_time = DataLoader(train_db_time, batch_size=batchsz, num_workers=0)
+
+    # train_sampler_fuel = torch.utils.data.RandomSampler(train_db_fuel, replacement=True, num_samples=len(train_db_time),
+    #                                                     generator=None)
+    # train_loader_fuel = DataLoader(train_db_fuel, sampler=train_sampler_fuel, batch_size=batchsz)
+
 
     # Create a new model or load an existing one.
     model = Pigat(feature_dim=feature_dimension, embedding_dim=[4, 2, 2, 2, 2, 4, 4], num_heads=head_number,
@@ -400,10 +416,7 @@ def train():
     optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=lr, betas=(0.9, 0.98), eps=1e-9)
     schedule = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="min", factor=0.5, patience=10)
     train_loss = []
-    # prof = torch.profiler.profile(activities=[torch.profiler.ProfilerActivity.CUDA],
-    #                               schedule=torch.profiler.schedule(wait=1, warmup=1, active=2),
-    #                               on_trace_ready=torch.profiler.tensorboard_trace_handler('./result', worker_name='worker2'),
-    #                               record_shapes=True, profile_memory=False, with_stack=True)
+    #with torch.autograd.profiler.profile(with_stack=True, use_cuda=True) as prof:
     for epoch in range(epochs):
         model.train()
         #prof.start()
@@ -428,6 +441,7 @@ def train():
 
     fast_elapsed_seconds = time.perf_counter() - start
     print(f'Custom dataloader: {fast_elapsed_seconds / epochs:.4f}s/epoch.')
+    #print(prof.key_averages(group_by_stack_n=5).table(sort_by='self_cpu_time_total', row_limit=5))
 
 
 train()
