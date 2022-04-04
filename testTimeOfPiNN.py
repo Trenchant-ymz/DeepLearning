@@ -10,7 +10,7 @@ import csv
 import time
 import visdom
 from tqdm import tqdm
-
+from obddataPreprocessing import loadData
 import torch.profiler
 import torch.utils.data
 
@@ -312,15 +312,68 @@ def calLossOfPath(model,x,y,c,id , mode = 'time',output = False):
     #return mse , mape, y.shape[0]
 
 
+class FastTensorDataLoader:
+    """
+    A DataLoader-like object for a set of tensors that can be much faster than
+    TensorDataset + DataLoader because dataloader grabs individual indices of
+    the dataset and calls cat (slow).
+    Source: https://discuss.pytorch.org/t/dataloader-much-slower-than-manual-batching/27014/6
+    """
+    def __init__(self, *tensors, batch_size=32, shuffle=False):
+        """
+        Initialize a FastTensorDataLoader.
+        :param *tensors: tensors to store. Must have the same length @ dim 0.
+        :param batch_size: batch size to load.
+        :param shuffle: if True, shuffle the data *in-place* whenever an
+            iterator is created out of this object.
+        :returns: A FastTensorDataLoader.
+        """
+        #print(tensors)
+        assert all(t.shape[0] == tensors[0].shape[0] for t in tensors)
+        self.tensors = tensors
+
+
+        self.dataset_len = self.tensors[0].shape[0]
+        self.batch_size = batch_size
+        self.shuffle = shuffle
+
+        # Calculate # batches
+        n_batches, remainder = divmod(self.dataset_len, self.batch_size)
+        if remainder > 0:
+            n_batches += 1
+        self.n_batches = n_batches
+    def __iter__(self):
+        if self.shuffle:
+            r = torch.randperm(self.dataset_len)
+            self.tensors = [t[r] for t in self.tensors]
+        self.i = 0
+        return self
+
+    def __next__(self):
+        if self.i >= self.dataset_len:
+            raise StopIteration
+        batch = tuple(t[self.i:self.i+self.batch_size] for t in self.tensors)
+        self.i += self.batch_size
+        return batch
+
+    def __len__(self):
+        return self.n_batches
 
 
 def train():
+    # x_TimeTrain, y_TimeTrain, c_TimeTrain, id_TimeTrain = loadData(root=data_root, mode="train", fuel=False, percentage=20,
+    #                                                                window_size=window_sz,path_length=train_path_length,
+    #                                                                label_dimension=1, pace=pace_train, withoutElevation=False)
+    # train_loader_time = FastTensorDataLoader(x_TimeTrain, y_TimeTrain, c_TimeTrain, id_TimeTrain, batch_size=batchsz)
+
     train_db_fuel = ObdData(root=data_root, mode="train", fuel=True, percentage=20, window_size=window_sz,
                             path_length=train_path_length, label_dimension=1, pace=pace_train,
                             withoutElevation=False)
     train_db_time = ObdData(root=data_root, mode="train", fuel=False, percentage=20, window_size=window_sz,
                             path_length=train_path_length, label_dimension=1, pace=pace_train,
                             withoutElevation=False)
+    # train_sampler_fuel = torch.utils.data.RandomSampler(train_db_fuel, replacement=True, num_samples=x_TimeTrain.shape[0],
+    #                                                     generator=None)
     train_sampler_fuel = torch.utils.data.RandomSampler(train_db_fuel, replacement=True, num_samples=len(train_db_time),
                                                         generator=None)
     train_loader_fuel = DataLoader(train_db_fuel, sampler=train_sampler_fuel, batch_size=batchsz, num_workers=0)
@@ -374,7 +427,7 @@ def train():
         schedule.step(loss)
 
     fast_elapsed_seconds = time.perf_counter() - start
-    print(f'Custom dataloader: {fast_elapsed_seconds / epochs:.2f}s/epoch.')
+    print(f'Custom dataloader: {fast_elapsed_seconds / epochs:.4f}s/epoch.')
 
 
 train()
