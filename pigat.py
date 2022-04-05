@@ -36,7 +36,7 @@ class PositionwiseFeedForward(nn.Module):
 
 class Pigat(nn.Module):
 
-    def __init__(self, feature_dim, embedding_dim, num_heads, output_dimension,n2v_dim,attention_dim = 64):
+    def __init__(self, feature_dim, embedding_dim, num_heads, output_dimension,n2v_dim,window_size,attention_dim = 64):
         super(Pigat, self).__init__()
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         #self.n2v = N2V('node2vec.mdl')
@@ -69,14 +69,15 @@ class Pigat(nn.Module):
         # 0-16
         self.embedding_endpoint_u = nn.Embedding(17, self.embedding_dim[5])
         self.embedding_endpoint_v = nn.Embedding(17, self.embedding_dim[6])
-        self.linearq = nn.Linear(self.total_embed_dim, self.attention_dim)
-        self.linearx = nn.Linear(self.total_embed_dim, self.attention_dim)
+        # self.linearq = nn.Linear(self.total_embed_dim, self.attention_dim)
+        # self.linearx = nn.Linear(self.total_embed_dim, self.attention_dim)
+        self.attention_dim = self.total_embed_dim
         self.selfattn = nn.MultiheadAttention(embed_dim= self.attention_dim, num_heads= self.num_heads)
         self.norm = LayerNorm(self.attention_dim )
         self.feed_forward = PositionwiseFeedForward(self.attention_dim)
         self.linear = nn.Linear(self.attention_dim,self.output_dimension)
         self.activate = nn.Softplus()
-
+        self.middleOfTheWindow = window_size//2
 
     def forward(self, x, c, id):
         # x -> [ batch, window size, feature dimension]
@@ -105,15 +106,16 @@ class Pigat(nn.Module):
         embedded = torch.cat([embedded, self.embedding_endpoint_u(c[:, 5, :])], dim=-1)
         embedded_6 = self.embedding_endpoint_v(c[:, 6, :])
         embedded = torch.cat([embedded, embedded_6], dim=-1)
+        print(embedded.shape)
         # [ batch, window size, feature dimension+ sum embedding dimension + node2vec]
         x = torch.cat([x, embedded, segmentEmbed], dim=-1)
         # [ window size, batch,  feature dimension+ sum embedding dimension]
         x = x.transpose(0, 1).contiguous()
         # q -> [1, batch, feature dimension+ sum embedding dimension]
         # middle of the window
-        q = x[x.shape[0] // 2, :, :].unsqueeze(0)
-        q = F.relu(self.linearq(q))
-        x = F.relu(self.linearx(x))
+        q = x[self.middleOfTheWindow, :, :].unsqueeze(0)
+        # q = F.relu(self.linearq(q))
+        # x = F.relu(self.linearx(x))
         # x -> [windowsz, batch, feature dimension+ sum embedding dimension]
         x_output, output_weight = self.selfattn(q,x,x)
         # x_output -> [1, batchsz, feature dimension+ sum embedding dimension]
@@ -128,16 +130,18 @@ class Pigat(nn.Module):
 
 def testNet():
     # test nets
-    net = AttentionBlk(feature_dim=6,embedding_dim=[4,2,2,2,2,4,4],num_heads=1,output_dimension=1,n2v_dim=32)
+    net = Pigat(feature_dim=6, embedding_dim=[4, 2, 2, 2, 2, 4, 4], num_heads=1,
+                  output_dimension=60, n2v_dim=32,window_size=3)
     p = sum(map(lambda p: p.numel(), net.parameters()))
     print("number of parameters:", p)
     net.n2v.embedding.weight.requires_grad = False
     print(dict(net.named_parameters()))
     # [batch size, window length,  feature dimension]
-    tmp = torch.randn(1, 3, 6)
+    tmp = torch.randn(1, 10,3, 6)
     # [batch, categorical_dim, window size]
-    c = torch.randint(1, (1, 7, 3))
-    id = torch.randint(1, (1, 3))
+    c = torch.randint(1, (1, 10, 7, 3))
+    #[batch,  window size]
+    id = torch.randint(1, (1, 10, 3))
     print(tmp.shape,c.shape,id.shape)
     # [batch size, output dimension]
     out = net(tmp,c,id)
