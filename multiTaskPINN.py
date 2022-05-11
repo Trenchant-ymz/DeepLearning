@@ -10,10 +10,12 @@ import csv
 import time
 import visdom
 from tqdm import tqdm
-
+from typing import List
 import torch.profiler
 import torch.utils.data
-
+import config
+import pandas as pd
+from obddataPreprocessing import loadData
 #from torchinterp1d import Interp1d
 import math
 
@@ -26,81 +28,6 @@ import math
 # Profiling: python -m cProfile -o profile.pstats multiTaskPINN.py
 # Visualize profile: snakeviz profile.pstats
 
-# divide a segment equally into n parts according to the length
-lengthOfVelocityProfile = 60
-tParts = lengthOfVelocityProfile # divide time into several parts
-
-# mean std
-meanOfSegmentLength = 608.2156661
-stdOfSegmentLength = 900.4150229
-
-# mean std
-meanOfSegmentHeightChange = -0.063065664
-stdOfSegmentHeightChange = 8.62278608
-
-# mean std
-meanOfSpeedLimit = 80.73990991
-stdOfSpeedLimit = 21.5979505
-
-
-
-meanOfMass = 23204.9788
-stdOfMass = 8224.139199
-
-# weight of acceleration loss (L1)
-omega_acc = 0
-# weight of jerk loss (MSE)
-omega_jerk = 1e-3
-#omega_jerk = 0
-#omega_seg_fuel = 0.1
-#omega_seg_time = omega_seg_fuel
-
-omega_speedLimit = 0
-
-omega_time = 0.4
-omega_fuel = 0.6
-
-# batch size 512 BEST
-batchsz = 512
-
-# learning rate
-lr = 1e-3
-
-# number of training epochs
-epochs = 1
-# epochs = 0
-
-# random seed
-seed = 1234
-torch.manual_seed(seed)
-torch.cuda.manual_seed(seed)
-np.random.seed(seed)
-# dimension of the output: [fuel consumption, time]
-label_dimension = 2
-
-# dimension of the input numerical features:
-# [speed limit, mass, elevation change, previous orientation, length, direction angle]
-feature_dimension = 6
-# there are also 7 categorical features:
-# "road_type", "time_stage", "week_day", "lanes", "bridge", "endpoint_u", "endpoint_v"
-
-# multi-head attention not influential
-head_number = 1
-# length of path used for training/validation
-train_path_length = 20
-
-
-# window size 3 best
-window_sz = 3
-
-# pace between paths
-pace_train = 5
-pace_test = 5
-
-if pace_train>train_path_length:
-    pace_train = train_path_length
-    print("pace train has been changed to:", pace_train)
-
 
 
 use_cuda = torch.cuda.is_available()
@@ -110,13 +37,7 @@ if use_cuda:
 else:
     device = torch.device("cpu")
 
-# local
-ckpt_path = os.path.join(os.getcwd(),r"multitaskModels/pinnMultihead.mdl")
-data_root = "model_data_newNov1perc"
-#data_root = "ExpDataset/recursion20"
-output_root = "prediction_result.csv"
 
-# load data
 
 def denormalize(normalized, mean, std):
     return normalized*std + mean
@@ -256,19 +177,71 @@ def vt2fuel(v,a,t,m,sin_theta ):
     #from galon => 10ml
     return torch.sum(f, dim=1)*3.7854*100
 
+class FastTensorDataLoader:
+    """
+    A DataLoader-like object for a set of tensors that can be much faster than
+    TensorDataset + DataLoader because dataloader grabs individual indices of
+    the dataset and calls cat (slow).
+    Source: https://discuss.pytorch.org/t/dataloader-much-slower-than-manual-batching/27014/6
+    """
+    def __init__(self, *tensors, batch_size=32, shuffle=False):
+        """
+        Initialize a FastTensorDataLoader.
+        :param *tensors: tensors to store. Must have the same length @ dim 0.
+        :param batch_size: batch size to load.
+        :param shuffle: if True, shuffle the data *in-place* whenever an
+            iterator is created out of this object.
+        :returns: A FastTensorDataLoader.
+        """
+        #print(tensors)
+        assert all(t.shape[0] == tensors[0].shape[0] for t in tensors)
+        self.tensors = tensors
+        self.dataset_len = self.tensors[0].shape[0]
+        self.batch_size = batch_size
+        self.shuffle = shuffle
+
+        # Calculate # batches
+        n_batches, remainder = divmod(self.dataset_len, self.batch_size)
+        if remainder > 0:
+            n_batches += 1
+        self.n_batches = n_batches
+    def __iter__(self):
+        if self.shuffle:
+            r = torch.randperm(self.dataset_len)
+            self.tensors = [t[r] for t in self.tensors]
+        self.i = 0
+        return self
+
+    def __next__(self):
+        if self.i >= self.dataset_len:
+            raise StopIteration
+        batch = tuple(t[self.i:self.i+self.batch_size] for t in self.tensors)
+        self.i += self.batch_size
+        return batch
+
+    def __len__(self):
+        return self.n_batches
+
+
+def randomsampler(*tensors, num_samples):
+    dataset_len = tensors[0].shape[0]
+    r = torch.randint(0, dataset_len, (num_samples,))
+    tensors = [t[r] for t in tensors]
+    return tensors
+
 
 def calLossOfPath(model,x,y,c,id , mode = 'time',output = False):
     segCriterion = nn.HuberLoss()
     #segCriterion = nn.L1Loss()
     pathCriterion = nn.MSELoss()
     maeCriterion = nn.L1Loss()
-    accCriterion = nn.L1Loss()
+    #accCriterion = nn.L1Loss()
     velCriterion = nn.L1Loss()
-    jerkCriterion = nn.L1Loss()
+    jerkCriterion = nn.MSELoss()
     label_segment = torch.zeros(y.shape[0]).to(device)
     pred_segment = torch.zeros(y.shape[0]).to(device)
     if output:
-        csvFile = open(output_root, "a")
+        csvFile = open(config.params.output_root, "a")
         writer = csv.writer(csvFile)
         writer.writerow(["id", "ground truth fuel(l)", "estimated fuel (l)", "ground truth time (s)", "estimated time (s)"])
     for i in range(x.shape[1]):
@@ -280,7 +253,7 @@ def calLossOfPath(model,x,y,c,id , mode = 'time',output = False):
         id_segment = id[:, i, :]
 
         # [batch size, output dimension]
-        label = y[:, i, window_sz // 2]
+        label = y[:, i, config.params.window_sz // 2]
 
         # [batch size, output dimension]
         label_segment += label
@@ -291,11 +264,11 @@ def calLossOfPath(model,x,y,c,id , mode = 'time',output = False):
 
         # extract the length of this segment
         # [batch size]
-        length = denormalize(x_segment[:, window_sz // 2, 4], meanOfSegmentLength, stdOfSegmentLength)
-        height = denormalize(x_segment[:, window_sz // 2, 2], meanOfSegmentHeightChange, stdOfSegmentHeightChange)
-        speedLimit = denormalize(x_segment[:, window_sz // 2, 0], meanOfSpeedLimit, stdOfSpeedLimit)/3.6
+        length = denormalize(x_segment[:, config.params.window_sz // 2, 4], config.params.meanOfSegmentLength, config.params.stdOfSegmentLength)
+        height = denormalize(x_segment[:, config.params.window_sz // 2, 2], config.params.meanOfSegmentHeightChange, config.params.stdOfSegmentHeightChange)
+        speedLimit = denormalize(x_segment[:, config.params.window_sz // 2, 0], config.params.meanOfSpeedLimit, config.params.stdOfSpeedLimit)/3.6
 
-        m = denormalize(x_segment[:, window_sz // 2, 1], meanOfMass, stdOfMass).unsqueeze(-1)
+        m = denormalize(x_segment[:, config.params.window_sz // 2, 1], config.params.meanOfMass, config.params.stdOfMass).unsqueeze(-1)
         v, t = vt2t(velocityProfile, length)
         acc = vt2a(v, t)
         jerk = vt2a(acc, t)
@@ -309,23 +282,23 @@ def calLossOfPath(model,x,y,c,id , mode = 'time',output = False):
             if output:
                 for j in range(y.shape[0]):
                     writer.writerow(
-                        [id_segment[j, window_sz // 2].item(), "-","-", np.array(label[j].cpu()), np.array(pred[j].cpu())])
+                        [id_segment[j, config.params.window_sz // 2].item(), "-","-", np.array(label[j].cpu()), np.array(pred[j].cpu())])
         else:
             pred = fuelEstimation(v, t, acc, m, height, length)
             if output:
                 for j in range(y.shape[0]):
                     writer.writerow(
-                        [id_segment[j, window_sz // 2].item(), np.array(label[j].cpu()), np.array(pred[j].cpu()), "-","-"])
+                        [id_segment[j, config.params.window_sz // 2].item(), np.array(label[j].cpu()), np.array(pred[j].cpu()), "-","-"])
         # [batch size, output dimension]
 
         if i == 0 :
             seg_loss = segCriterion(label,pred)
-            acc_loss = accCriterion(acc, zeros).to(device)
+            #acc_loss = accCriterion(acc, zeros).to(device)
             jerk_loss = jerkCriterion(jerk, zeros).to(device)
             vel_loss = velCriterion(F.relu(v-speedLimit),zeros).to(device)
         else:
             seg_loss += segCriterion(label,pred)
-            acc_loss += accCriterion(acc, zeros).to(device)
+            #acc_loss += accCriterion(acc, zeros).to(device)
             jerk_loss += jerkCriterion(jerk, zeros).to(device)
             vel_loss += velCriterion(F.relu(v - speedLimit), zeros).to(device)
         pred_segment += pred
@@ -336,12 +309,12 @@ def calLossOfPath(model,x,y,c,id , mode = 'time',output = False):
     mape = mape_loss(label_segment, pred_segment)
     mae = maeCriterion(label_segment, pred_segment)
     mse = pathCriterion(label_segment, pred_segment)
-    coefficient = omega_time if mode == 'time' else omega_fuel
+    coefficient = config.params.omega_time if mode == 'time' else config.params.omega_fuel
     if coefficient != 0:
-        totalLoss = mape + (seg_loss + (omega_acc * acc_loss + omega_jerk * jerk_loss + omega_speedLimit * vel_loss) / coefficient)/x.shape[1]
+        #totalLoss = mape + (seg_loss  / coefficient) /  x.shape[1]
+        totalLoss = mape + (seg_loss + config.params.omega_jerk * jerk_loss  / coefficient)/x.shape[1]
     else:
-        totalLoss = mape + (seg_loss + (omega_acc * acc_loss + omega_jerk * jerk_loss + omega_speedLimit * vel_loss) / 1)/x.shape[1]
-    #totalLoss = mse + (seg_loss + (omega_acc * acc_loss + omega_jerk * jerk_loss + omega_speedLimit * vel_loss) / coefficient) / x.shape[1]
+        totalLoss = mape + (seg_loss + config.params.omega_jerk * jerk_loss  / 1)/x.shape[1]
     #print('mse',mse,seg_loss,jerk_loss)
     return totalLoss, mape,  mse, mae, y.shape[0]
     #return mse , mape, y.shape[0]
@@ -357,7 +330,7 @@ def eval(model, loader_time, loader_fuel, output = False):
     """
 
     if output:
-        csvFile = open(output_root, "w")
+        csvFile = open(config.params.output_root, "w")
         writer = csv.writer(csvFile)
         writer.writerow(["id", "ground truth fuel(l)", "ground truth time (s)", "estimated fuel (l)", "estimated time (s)"])
     loss_mape_fuel_total = 0
@@ -380,7 +353,7 @@ def eval(model, loader_time, loader_fuel, output = False):
             loss_fuel, loss_mape_fuel, mse_fuel, mae_fuel,  cnt_add = calLossOfPath(model, xf, yf, cf, idf, mode='fuel', output=output)
             loss_fuel_total += loss_fuel * cnt_add
             loss_time_total += loss_time * cnt_add
-            loss_total += omega_fuel * loss_fuel * cnt_add + omega_time * loss_time * cnt_add
+            loss_total += config.params.omega_fuel * loss_fuel * cnt_add + config.params.omega_time * loss_time * cnt_add
             loss_mape_time_total += loss_mape_time * cnt_add
             loss_mape_fuel_total += loss_mape_fuel * cnt_add
             mse_time_total += mse_time * cnt_add
@@ -395,32 +368,62 @@ def eval(model, loader_time, loader_fuel, output = False):
 
 
 def train():
-    train_db_fuel = ObdData(root=data_root, mode="train", fuel=True, percentage=20, window_size=window_sz,\
-                       path_length=train_path_length, label_dimension=1, pace=pace_train,
-                       withoutElevation=False)
-    train_db_time = ObdData(root=data_root, mode="train", fuel=False, percentage=20, window_size=window_sz,\
-                       path_length=train_path_length, label_dimension=1, pace=pace_train,
-                       withoutElevation=False)
-    train_sampler_fuel = torch.utils.data.RandomSampler(train_db_fuel, replacement=True, num_samples=len(train_db_time),
-                                                   generator=None)
-    train_loader_fuel = DataLoader(train_db_fuel, sampler = train_sampler_fuel, batch_size=batchsz, num_workers=0)
-    train_loader_time = DataLoader(train_db_time, batch_size=batchsz, num_workers=0)
+    # random seed
+    seed = 1234
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    np.random.seed(seed)
 
-    val_db_fuel = ObdData(root=data_root, mode="val", fuel=True, percentage=20, window_size=window_sz,\
-                     path_length=train_path_length, label_dimension=1, pace=pace_test,
-                     withoutElevation=False)
-    val_db_time = ObdData(root=data_root, mode="val", fuel=False, percentage=20, window_size=window_sz, \
-                          path_length=train_path_length, label_dimension=1, pace=pace_test,
-                          withoutElevation=False)
-    val_sampler_fuel = torch.utils.data.RandomSampler(val_db_fuel, replacement=True, num_samples=len(val_db_time),
-                                             generator=None)
+    x_TimeTrain, y_TimeTrain, c_TimeTrain, id_TimeTrain = loadData(root=config.params.data_root, mode="train", fuel=False, percentage=20,
+                                                                   window_size=config.params.window_sz,path_length=config.params.train_path_length,
+                                                                   label_dimension=1, pace=config.params.pace_train, withoutElevation=False)
+    train_loader_time = FastTensorDataLoader(x_TimeTrain, y_TimeTrain, c_TimeTrain, id_TimeTrain, batch_size=config.params.batchsz)
 
-    val_loader_fuel = DataLoader(val_db_fuel, sampler = val_sampler_fuel, batch_size=batchsz, num_workers=0)
-    val_loader_time = DataLoader(val_db_time, batch_size=batchsz, num_workers=0)
+    x_FuelTrain, y_FuelTrain, c_FuelTrain, id_FuelTrain = loadData(root=config.params.data_root, mode="train", fuel=True, percentage=20,
+                                                                   window_size=config.params.window_sz,path_length=config.params.train_path_length,
+                                                                   label_dimension=1, pace=config.params.pace_train, withoutElevation=False)
+    x_FuelTrain, y_FuelTrain, c_FuelTrain, id_FuelTrain = randomsampler(x_FuelTrain, y_FuelTrain, c_FuelTrain, id_FuelTrain, num_samples=x_TimeTrain.shape[0])
+    train_loader_fuel = FastTensorDataLoader(x_FuelTrain, y_FuelTrain, c_FuelTrain, id_FuelTrain, batch_size=config.params.batchsz)
+
+    # train_db_fuel = ObdData(root=config.params.data_root, mode="train", fuel=True, percentage=20, window_size=config.params.window_sz,\
+    #                    path_length=config.params.train_path_length, label_dimension=1, pace=config.params.pace_train,
+    #                    withoutElevation=False)
+    # train_db_time = ObdData(root=config.params.data_root, mode="train", fuel=False, percentage=20, window_size=config.params.window_sz,\
+    #                    path_length=config.params.train_path_length, label_dimension=1, pace=config.params.pace_train,
+    #                    withoutElevation=False)
+    # train_sampler_fuel = torch.utils.data.RandomSampler(train_db_fuel, replacement=True, num_samples=len(train_db_time),
+    #                                                generator=None)
+    # train_loader_fuel = DataLoader(train_db_fuel, sampler = train_sampler_fuel, batch_size=config.params.batchsz, num_workers=0)
+    # train_loader_time = DataLoader(train_db_time, batch_size=config.params.batchsz, num_workers=0)
+
+
+    # val_db_fuel = ObdData(root=config.params.data_root, mode="val", fuel=True, percentage=20, window_size=config.params.window_sz,\
+    #                  path_length=config.params.train_path_length, label_dimension=1, pace=config.params.pace_test,
+    #                  withoutElevation=False)
+    # val_db_time = ObdData(root=config.params.data_root, mode="val", fuel=False, percentage=20, window_size=config.params.window_sz, \
+    #                       path_length=config.params.train_path_length, label_dimension=1, pace=config.params.pace_test,
+    #                       withoutElevation=False)
+    # val_sampler_fuel = torch.utils.data.RandomSampler(val_db_fuel, replacement=True, num_samples=len(val_db_time),
+    #                                          generator=None)
+    #
+    # val_loader_fuel = DataLoader(val_db_fuel, sampler = val_sampler_fuel, batch_size=config.params.batchsz, num_workers=0)
+    # val_loader_time = DataLoader(val_db_time, batch_size=config.params.batchsz, num_workers=0)
+
+    x_TimeVal, y_TimeVal, c_TimeVal, id_TimeVal = loadData(root=config.params.data_root, mode="val", fuel=False, percentage=20,
+                                                                   window_size=config.params.window_sz,path_length=config.params.train_path_length,
+                                                                   label_dimension=1, pace=config.params.pace_test, withoutElevation=False)
+    val_loader_time = FastTensorDataLoader(x_TimeVal, y_TimeVal, c_TimeVal, id_TimeVal, batch_size=config.params.batchsz)
+
+    x_FuelVal, y_FuelVal, c_FuelVal, id_FuelVal = loadData(root=config.params.data_root, mode="val", fuel=True, percentage=20,
+                                                                   window_size=config.params.window_sz,path_length=config.params.train_path_length,
+                                                                   label_dimension=1, pace=config.params.pace_test, withoutElevation=False)
+    x_FuelVal, y_FuelVal, c_FuelVal, id_FuelVal = randomsampler(x_FuelVal, y_FuelVal, c_FuelVal, id_FuelVal, num_samples=x_TimeVal.shape[0])
+    val_loader_fuel = FastTensorDataLoader(x_FuelVal, y_FuelVal, c_FuelVal, id_FuelVal, batch_size=config.params.batchsz)
 
     viz = visdom.Visdom()
     # Create a new model or load an existing one.
-    model = Pigat(feature_dim=feature_dimension,embedding_dim=[4,2,2,2,2,4,4],num_heads=head_number,output_dimension=lengthOfVelocityProfile, n2v_dim=32)
+    model = Pigat(feature_dim=config.params.feature_dimension,embedding_dim=[4,2,2,2,2,4,4],num_heads=config.params.head_number,
+                  output_dimension=config.params.lengthOfVelocityProfile, n2v_dim=config.params.n2v_dim,window_size=config.params.window_sz)
     print('Creating new model parameters..')
     # this code is very important! It initialises the parameters with a
     # range of values that stops the signal fading or getting too big.
@@ -436,8 +439,10 @@ def train():
     p = sum(map(lambda p: p.numel(), model.parameters()))
     print("number of parameters:", p)
 
-    optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=lr, betas=(0.9, 0.98), eps=1e-9)
-    schedule = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="min", factor=0.5, patience=10)
+    optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=config.params.lr,
+                           betas=(config.params.beta_1, config.params.beta_2), eps=config.params.eps)
+    schedule = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="min", factor=0.5,
+                                                    patience=config.params.patienceOfTrainingEpochs)
     train_loss = []
     #for p in filter(lambda p: p.requires_grad, model.parameters()): print(p)
     #criterion = nn.MSELoss()
@@ -458,66 +463,71 @@ def train():
     #                               schedule=torch.profiler.schedule(wait=1, warmup=1, active=2),
     #                               on_trace_ready=torch.profiler.tensorboard_trace_handler('./result', worker_name='worker2'),
     #                               record_shapes=True, profile_memory=False, with_stack=True)
-    with torch.autograd.profiler.profile(with_stack=True, profile_memory=True, use_cuda=True) as prof:
-        for epoch in range(epochs):
-            model.train()
-            #prof.start()
-            for step, ((xt, yt, ct, idt),(xf,yf,cf,idf)) in tqdm(enumerate(zip(train_loader_time,train_loader_fuel))):
-                # x: numerical features [batch, path length, window size, feature dimension]
-                # y: label [batch, path length, window size, (label dimension)]
-                # c: categorical features [batch, number of categorical features, path length, window size]
-                #x, y, c = x.to(device), y.to(device), c.to(device)
+    #with torch.autograd.profiler.profile(with_stack=True, profile_memory=True, use_cuda=True) as prof:
+    for epoch in range(config.params.max_epochs):
 
-                # For each batch, predict fuel consumption/time for each segment in a path and sum them
-                # [batch size, output dimension]
+        model.train()
+        #prof.start()
+        for step, ((xt, yt, ct, idt),(xf,yf,cf,idf)) in tqdm(enumerate(zip(train_loader_time,train_loader_fuel))):
+            # x: numerical features [batch, path length, window size, feature dimension]
+            # y: label [batch, path length, window size, (label dimension)]
+            # c: categorical features [batch, number of categorical features, path length, window size]
+            #x, y, c = x.to(device), y.to(device), c.to(device)
 
-                mse_time, loss_mape_time, _,_,_ = calLossOfPath(model, xt, yt, ct, idt, mode='time')
-                mse_fuel, loss_mape_fuel, _,_,_ = calLossOfPath(model, xf, yf, cf, idf, mode='fuel')
+            # For each batch, predict fuel consumption/time for each segment in a path and sum them
+            # [batch size, output dimension]
 
-                #loss = mape_loss(label_path, pred_path)
-                #print('loss',loss_fuel,loss_time)
-                loss = omega_fuel*mse_fuel + omega_time*mse_time
-                #print(loss)
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
-            #     prof.step()
-            # prof.stop()
-                #print(dict(model.named_parameters()))
+            mse_time, loss_mape_time, _,_,_ = calLossOfPath(model, xt, yt, ct, idt, mode='time')
+            mse_fuel, loss_mape_fuel, _,_,_ = calLossOfPath(model, xf, yf, cf, idf, mode='fuel')
 
-            viz.line([loss.item()], [global_step], win='train_mse', update='append')
-            viz.line([mse_time.item()], [global_step], win='train_fuel_mse', update='append')
-            viz.line([mse_fuel.item()], [global_step], win='train_time_mse', update='append')
+            #loss = mape_loss(label_path, pred_path)
+            #print('loss',loss_fuel,loss_time)
+            loss = config.params.omega_fuel*mse_fuel + config.params.omega_time*mse_time
+            #print(loss)
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+        #     prof.step()
+        # prof.stop()
+            #print(dict(model.named_parameters()))
+
+        viz.line([loss.item()], [global_step], win='train_mse', update='append')
+        viz.line([mse_time.item()], [global_step], win='train_fuel_mse', update='append')
+        viz.line([mse_fuel.item()], [global_step], win='train_time_mse', update='append')
 
 
-            viz.line([loss_mape_fuel.item()], [global_step], win='train_fuel_mape', update='append')
-            viz.line([loss_mape_time.item()], [global_step], win='train_time_mape', update='append')
-            train_loss.append(loss_mape_fuel.item())
-            schedule.step(loss)
-            learning_rate = optimizer.state_dict()['param_groups'][0]['lr']
-            viz.line([learning_rate], [global_step], win='learning rate', update='append')
+        viz.line([loss_mape_fuel.item()], [global_step], win='train_fuel_mape', update='append')
+        viz.line([loss_mape_time.item()], [global_step], win='train_time_mape', update='append')
+        train_loss.append(loss.item())
+        schedule.step(loss)
+        learning_rate = optimizer.state_dict()['param_groups'][0]['lr']
 
-            # print("epoch:", epoch, "test_mse:", loss)
-            if epoch % 1 == 0:
-                val_mse, val_loss_fuel,val_loss_time, val_fuel_mape, val_time_mape, mse_fuel, mse_time, mae_fuel, mae_time = eval(model,val_loader_time, val_loader_fuel)
-                # schedule.step(val_mse)
-                print("epoch:", epoch, "val_mape_fuel(%):", np.array(val_fuel_mape.cpu())*100,"val_mape_time(%):", np.array(val_time_mape.cpu())*100, "val_mse:", np.array(val_mse.cpu()))
-                print("epoch:", epoch,  "train_mse:", loss.item())
-                if val_mse < best_mse:
-                    best_epoch = epoch
-                    best_mse = val_mse
-                    torch.save(model.state_dict(), ckpt_path)
-                viz.line([val_mse.item()], [global_step], win='val_mse', update='append')
-                viz.line([mse_fuel.item()], [global_step], win='val_fuel_mse', update='append')
-                viz.line([mse_time.item()], [global_step], win='val_time_mse', update='append')
-                viz.line([val_fuel_mape.item()], [global_step], win='val_fuel_mape', update='append')
-                viz.line([val_time_mape.item()], [global_step], win='val_time_mape', update='append')
+        viz.line([learning_rate], [global_step], win='learning rate', update='append')
 
-            global_step += 1
+        # print("epoch:", epoch, "test_mse:", loss)
+        if epoch % 1 == 0:
+            val_mse, val_loss_fuel,val_loss_time, val_fuel_mape, val_time_mape, mse_fuel, mse_time, mae_fuel, mae_time = eval(model,val_loader_time, val_loader_fuel)
+            # schedule.step(val_mse)
+            print("epoch:", epoch, "val_mape_fuel(%):", np.array(val_fuel_mape.cpu())*100,"val_mape_time(%):", np.array(val_time_mape.cpu())*100, "val_mse:", np.array(val_mse.cpu()))
+            print("epoch:", epoch,  "train_mse:", loss.item())
+            if val_mse < best_mse:
+                best_epoch = epoch
+                best_mse = val_mse
+                torch.save(model.state_dict(), config.params.ckpt_path)
+            viz.line([val_mse.item()], [global_step], win='val_mse', update='append')
+            viz.line([mse_fuel.item()], [global_step], win='val_fuel_mse', update='append')
+            viz.line([mse_time.item()], [global_step], win='val_time_mse', update='append')
+            viz.line([val_fuel_mape.item()], [global_step], win='val_fuel_mape', update='append')
+            viz.line([val_time_mape.item()], [global_step], win='val_time_mape', update='append')
 
+        global_step += 1
+        if learning_rate < 1e-3:
+            break
     print("best_epoch:", best_epoch, "best_mse:", np.array(best_mse.cpu()))
-    np.savetxt('trainLossPiNN.csv', train_loss, delimiter=',')
-    print(prof.key_averages(group_by_stack_n=5).table(sort_by='self_cpu_time_total', row_limit=5))
+    np.savetxt('trainLossPiNNwithoutJerk.csv', train_loss, delimiter=',')
+    print("training epochs: {}".format(len(train_loss)))
+    return len(train_loss)
+    #print(prof.key_averages(group_by_stack_n=5).table(sort_by='self_cpu_time_total', row_limit=5))
 
 
 def test(model, test_path_length, test_pace, output = False):
@@ -528,57 +538,90 @@ def test(model, test_path_length, test_pace, output = False):
     """
 
     # load an existing model.
-    test_db_time = ObdData(root=data_root, mode="test",fuel=False, percentage=20, window_size=window_sz,\
+    test_db_time = ObdData(root=config.params.data_root, mode="test",fuel=False, percentage=20, window_size=config.params.window_sz,\
                       path_length=test_path_length, label_dimension=1, pace=test_pace,
                       withoutElevation=False)
-    test_db_fuel = ObdData(root=data_root, mode="test",fuel=True, percentage=20, window_size=window_sz, \
-                      path_length=test_path_length, label_dimension=1, pace=test_pace,
+    test_db_fuel = ObdData(root=config.params.data_root, mode="test",fuel=True, percentage=20, window_size=config.params.window_sz, \
+                        path_length=test_path_length, label_dimension=1, pace=test_pace,
                       withoutElevation=False)
 
-    test_loader_time = DataLoader(test_db_time, batch_size=batchsz, num_workers=0)
-    test_loader_fuel = DataLoader(test_db_fuel, batch_size=batchsz, num_workers=0)
+    test_loader_time = DataLoader(test_db_time, batch_size=config.params.batchsz, num_workers=0)
+    test_loader_fuel = DataLoader(test_db_fuel, batch_size=config.params.batchsz, num_workers=0)
     #print(model)
     #p = sum(map(lambda p: p.numel(), model.parameters()))
     #print("number of parameters:", p)
     test_mse,_,_, test_fuel_mape, test_time_mape, mse_fuel, mse_time, mae_fuel, mae_time = eval(model, test_loader_time, test_loader_fuel, output=output)
     print("test_mape_fuel(%):", np.array(test_fuel_mape.cpu()) * 100)
-    print("test_mape_time(%):", np.array(test_time_mape.cpu()) * 100)
-    print("test_mse_fuel:", np.array(mse_fuel.cpu())**0.5/100)
+    #print("test_mape_time(%):", np.array(test_time_mape.cpu()) * 100)
+    #print("test_mse_fuel:", np.array(mse_fuel.cpu())**0.5/100)
     #print("test_mse_time:", np.array(mse_time.cpu()))
-    print("test_mae_fuel:", np.array(mae_fuel.cpu())/100)
+    #print("test_mae_fuel:", np.array(mae_fuel.cpu())/100)
+    return np.array(test_fuel_mape.cpu()) * 100
     #print("test_mae_time:", np.array(mae_time.cpu()))
 
 
-def main(mode, output = False):
+def trainTest(mode, output = False):
     """
     :param mode: "train" for training, "test" for testing the existing model or predicting
     :return:
     """
+
     if mode == "train":
         train()
+        return
     elif mode == "test":
-        model = Pigat(feature_dim=feature_dimension, embedding_dim=[4, 2, 2, 2, 2, 4, 4], num_heads=head_number,
-                             output_dimension=lengthOfVelocityProfile, n2v_dim=32)
-        if os.path.exists(ckpt_path):
+        model = Pigat(feature_dim=config.params.feature_dimension, embedding_dim=[4, 2, 2, 2, 2, 4, 4], num_heads=config.params.head_number,
+                             output_dimension=config.params.lengthOfVelocityProfile, n2v_dim=32, window_size=config.params.window_sz)
+        if os.path.exists(config.params.ckpt_path):
             print('Reloading model parameters..')
-            model.load_state_dict(torch.load(ckpt_path, map_location=device))
+            model.load_state_dict(torch.load(config.params.ckpt_path, map_location=device))
         else:
             print('Error: no existing model')
         model.to(device)
+        fuelMapeList = []
         # length of path used for test
         test_path_length_list = [1,2,5,10,20,50,100,200]
         for length in test_path_length_list:
-            pace_test = pace_train
+            pace_test = config.params.pace_test
             if  pace_test > length:
                 pace_test = length
                 print("pace test has been changed to:", pace_test)
             print("test path length:",length)
-            test(model, length,pace_test, output = output)
-    return
+            test_fuel_mape = test(model, length,pace_test,output = output)
+            fuelMapeList.append(test_fuel_mape)
+        return fuelMapeList
+    else:
+        return
+
+def gridSearch(windowSizeList: List[int], jerkPenaltyList: List[float], ecotollWeightList: List[float]):
+    for i in range(11,21):
+        outputFileName = 'mapeOfAllParams/mapeForDataSet{}.csv'.format(i-10)
+        config.params.data_root = "ExpDataset/recursion{}".format(i)
+        dfOfMape = pd.DataFrame(columns=['Epochs', 'path length 1', 'path length 2',
+                                                            'path length 5', 'path length 10', 'path length 20',
+                                                            'path length 50', 'path length 100', 'path length 200'])
+        indexList= []
+        for windowSize in windowSizeList:
+            for jerkPenalty in jerkPenaltyList:
+                for ecotollWeight in ecotollWeightList:
+                    config.params.window_sz = windowSize
+                    config.params.omega_jerk = jerkPenalty
+                    config.params.omega_fuel = ecotollWeight
+                    config.params.omega_time = 1 - ecotollWeight
+                    print('windowsize:{wsz},jerkWeight:{jerk},ecotollWeight:{ecotollWeight},Dataset:{numberOfDataset}'\
+                          .format(wsz=windowSize, jerk=jerkPenalty, ecotollWeight=ecotollWeight, numberOfDataset=i-10))
+                    trainEpochs = train()
+                    mapeList = trainTest(mode='test')
+                    dfOfMape = pd.concat([dfOfMape, pd.DataFrame([[trainEpochs] + mapeList], columns=dfOfMape.columns)], ignore_index=True)
+                    indexList.append('windowsz{wsz}jerk{jerk}ecotoll{ecotollWeight}'.format(wsz=windowSize,jerk=jerkPenalty, ecotollWeight =ecotollWeight ))
+        dfOfMape.index = indexList
+        dfOfMape.to_csv(outputFileName)
+
+
 
 if __name__ == '__main__':
-    main(input("mode="), output = False)
-
+    #trainTest(input("mode="), output = False)
+    gridSearch(windowSizeList=[1,3,5], jerkPenaltyList=[0, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7], ecotollWeightList=[0, 0.4, 0.6, 0.8, 1])
     #main("test")
     #main("train")
     # main("test", output = True)
