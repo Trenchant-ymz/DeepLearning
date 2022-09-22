@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 import torch.nn.functional as F
-from node2vec import N2V
+#from node2vec import N2V
 import pickle
 from torch_geometric.nn import Node2Vec
 
@@ -93,22 +93,34 @@ class Pigat(nn.Module):
         embedded_endpoint_u = self.embedding_endpoint_u(c[:, 5, :])
         embedded_endpoint_v = self.embedding_endpoint_v(c[:, 6, :])
         '''
-        #[batch, window size, node2vec]
-        segmentEmbed = self.n2v(id)
+
+        #print(id.view(id.shape[0], id.shape[1]*id.shape[2]).shape)
+        # segmentEmbed_0 = self.n2v(id[:, 0]).unsqueeze(1)
+        # segmentEmbed_1 = self.n2v(id[:, 1]).unsqueeze(1)
+        # segmentEmbed_2 = self.n2v(id[:, 2]).unsqueeze(1)
+        # [batch, window size, node2vec]
+        segmentEmbed  = torch.cat([self.n2v(id[:, i]).unsqueeze(1) for i in range(id.shape[1])], dim=1)
         #print('segmentEmbed', segmentEmbed.shape)
 
         # [batch_sz, window_sz, embedding dim
-        embedded = self.embedding_road_type(c[:,0,:])
-        embedded = torch.cat([embedded, self.embedding_time_stage(c[:, 1, :])], dim=-1)
-        embedded = torch.cat([embedded, self.embedding_week_day(c[:, 2, :])], dim=-1)
-        embedded = torch.cat([embedded, self.embedding_lanes(c[:, 3, :])], dim=-1)
-        embedded = torch.cat([embedded, self.embedding_bridge(c[:, 4, :])], dim=-1)
-        embedded = torch.cat([embedded, self.embedding_endpoint_u(c[:, 5, :])], dim=-1)
-        embedded_6 = self.embedding_endpoint_v(c[:, 6, :])
-        embedded = torch.cat([embedded, embedded_6], dim=-1)
-        print(embedded.shape)
+        embedded0 = self.embedding_road_type(c[:,0,:])
+        embedded1 = self.embedding_time_stage(c[:, 1, :])
+        embedded2 = self.embedding_week_day(c[:, 2, :])
+        embedded3 = self.embedding_lanes(c[:, 3, :])
+        embedded4 = self.embedding_bridge(c[:, 4, :])
+        embedded5 = self.embedding_endpoint_u(c[:, 5, :])
+        embedded6 = self.embedding_endpoint_v(c[:, 6, :])
+
+        # embedded = torch.cat([embedded, self.embedding_time_stage(c[:, 1, :])], dim=-1)
+        # embedded = torch.cat([embedded, self.embedding_week_day(c[:, 2, :])], dim=-1)
+        # embedded = torch.cat([embedded, self.embedding_lanes(c[:, 3, :])], dim=-1)
+        # embedded = torch.cat([embedded, self.embedding_bridge(c[:, 4, :])], dim=-1)
+        # embedded = torch.cat([embedded, self.embedding_endpoint_u(c[:, 5, :])], dim=-1)
+        # embedded_6 = self.embedding_endpoint_v(c[:, 6, :])
+        #embedded = torch.cat([embedded0,embedded1,embedded2,embedded3,embedded4,embedded5,embedded6], dim=-1)
+
         # [ batch, window size, feature dimension+ sum embedding dimension + node2vec]
-        x = torch.cat([x, embedded, segmentEmbed], dim=-1)
+        x = torch.cat([x, embedded0,embedded1,embedded2,embedded3,embedded4,embedded5,embedded6, segmentEmbed], dim=-1)
         # [ window size, batch,  feature dimension+ sum embedding dimension]
         x = x.transpose(0, 1).contiguous()
         # q -> [1, batch, feature dimension+ sum embedding dimension]
@@ -117,9 +129,11 @@ class Pigat(nn.Module):
         # q = F.relu(self.linearq(q))
         # x = F.relu(self.linearx(x))
         # x -> [windowsz, batch, feature dimension+ sum embedding dimension]
+
         x_output, output_weight = self.selfattn(q,x,x)
         # x_output -> [1, batchsz, feature dimension+ sum embedding dimension]
         x_output = self.norm(q+x_output)
+
         x_output_ff = self.feed_forward(x_output.squeeze(0))
         x_output = self.norm(x_output.squeeze(0) + x_output_ff)
         x_output = self.linear(x_output)

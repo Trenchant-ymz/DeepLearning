@@ -5,9 +5,8 @@ class Params:
     def __init__(self):
         self.batchsz = 512  # Batch size.
         self.max_epochs = 1500 # Number of epochs to train for.
-        self.lr = 1e-3# Learning rate.
+        self.lr = 1e-4 # Learning rate.
         self.lengthOfVelocityProfile = 60  # divide a segment equally into n parts according to the length
-        self.tParts = 60  # divide time into same number of parts
         self.meanOfSegmentLength= 608.2156661
         self.stdOfSegmentLength= 900.4150229
         self.meanOfSegmentHeightChange= -0.063065664
@@ -16,7 +15,7 @@ class Params:
         self.stdOfSpeedLimit= 21.5979505
         self.meanOfMass= 23204.9788
         self.stdOfMass= 8224.139199
-        self.omega_jerk= 1e-4  # weight of jerk loss (MSE)
+        self.omega_jerk= 1e-6  # weight of jerk loss (MSE)
         self.omega_fuel= 0.6
         self.omega_time= 0.4  # omega_time + omega_fuel = 1
         self.feature_dimension= 6 # dimension of the input numerical features:
@@ -32,10 +31,11 @@ class Params:
         self.beta_1= 0.9
         self.beta_2= 0.98
         self.eps= 1e-9
-        self.patienceOfTrainingEpochs= 9  # Number of epochs with no improvement after which training stage will be ended
+        self.patienceOfTrainingEpochs= 10  # Number of epochs with no improvement after which training stage will be ended
         self.ckpt_path = os.path.join(os.getcwd(), r"multitaskModels/pinnMultihead.mdl")
-        self.data_root = "ExpDataset/recursion16"
+        self.data_root = "ExpDataset/recursion11"
         self.output_root = "prediction_result.csv"
+        self.pathLossWeight = 1
 
 
 params = Params()

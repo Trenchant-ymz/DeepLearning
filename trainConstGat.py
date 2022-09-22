@@ -20,7 +20,7 @@ batchsz = 512
 lr = 1e-3
 
 # number of training epochs
-epochs = 1500
+epochs = 2500
 # epochs = 0
 
 # random seed
@@ -43,9 +43,12 @@ head_number = 1
 # length of path used for training/validation
 train_path_length = 20
 
+patienceOfTrainingEpochs = 10
+
 # weight of the segment task
 #omega_seg = 0.1
 
+trainingLossList = []
 
 # window size 3 best
 window_sz = 3
@@ -79,10 +82,10 @@ ckpt_path = os.path.join(os.getcwd(),"pretrained models/constGat20.mdl")
 #ckpt_path = os.path.join(os.getcwd(),"pretrained models/cgtrans.mdl")
 #ckpt_path = "pretrained models/gatfuelOctDropAddRelu.mdl"
 #data_root = "model_data_newNov1perc"
-data_root = "ExpDataset/recursion12"
+data_root = "ExpDataset/recursion5perc20"
 #data_root = "DataDifferentiated"
 output_root = "prediction_result_constgat.csv"
-
+mode = "test"
 
 def denormalize(x_hat):
     fuel_mean = [0.205986075]
@@ -196,14 +199,30 @@ def eval(model, loader, output = False):
 
 def train():
     # load data
-    train_db = ObdData(root=data_root, mode="train",fuel=False, percentage=20, window_size=window_sz,\
+    train_db = ObdData(root=data_root, mode="train",fuel=True, percentage=20, window_size=window_sz,\
                        path_length=train_path_length, label_dimension=output_dimension, pace=pace_train,
                        withoutElevation=False)
-    val_db = ObdData(root=data_root, mode="val",fuel=False, percentage=20, window_size=window_sz,\
+    train_db_time = ObdData(root=data_root, mode="train",fuel=False, percentage=20, window_size=window_sz,\
+                       path_length=train_path_length, label_dimension=output_dimension, pace=pace_train,
+                       withoutElevation=False)
+    train_sampler_fuel = torch.utils.data.RandomSampler(train_db, replacement=True, num_samples=len(train_db_time),
+                                                   generator=None)
+
+
+    val_db = ObdData(root=data_root, mode="val",fuel=True, percentage=20, window_size=window_sz,\
                      path_length=train_path_length, label_dimension=output_dimension, pace=pace_test,
                      withoutElevation=False)
-    train_loader = DataLoader(train_db, batch_size=batchsz, num_workers=0)
-    val_loader = DataLoader(val_db, batch_size=batchsz, num_workers=0)
+    val_db_time = ObdData(root=data_root, mode="val",fuel=False, percentage=20, window_size=window_sz,\
+                     path_length=train_path_length, label_dimension=output_dimension, pace=pace_test,
+                     withoutElevation=False)
+
+    val_sampler_fuel = torch.utils.data.RandomSampler(val_db, replacement=True, num_samples=len(val_db_time),
+                                             generator=None)
+    train_loader = DataLoader(train_db, sampler = train_sampler_fuel, batch_size=batchsz, num_workers=0)
+    val_loader = DataLoader(val_db,sampler = val_sampler_fuel, batch_size=batchsz, num_workers=0)
+
+
+
     viz = visdom.Visdom()
     # Create a new model or load an existing one.
     model = ConstGat(n2v_dim=32, attention_dim=32, feature_dim=feature_dimension, embedding_dim=[4, 2, 2, 2, 2, 4, 4], num_heads=head_number,
@@ -228,6 +247,7 @@ def train():
     model.n2v.load_state_dict(torch.load('node2vec.mdl'))
     model.n2v.embedding.weight.requires_grad = False
 
+    train_loss = []
     # model.load_state_dict(torch.load(ckpt_path, map_location=device))
     #
     # for param in model.parameters():
@@ -240,7 +260,7 @@ def train():
     print("number of parameters:", p)
 
     optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=lr, betas=(0.9, 0.98), eps=1e-9)
-    schedule = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="min", factor=0.5, patience=10)
+    #schedule = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="min", factor=0.5, patience=10)
 
     criterion = nn.L1Loss()
     global_step = 0
@@ -250,6 +270,7 @@ def train():
     viz.line([0], [-1], win='train_mape', opts=dict(title='train_mape'))
     viz.line([0], [-1], win='val_mape', opts=dict(title='val_mape'))
     viz.line([0], [-1], win='learning rate', opts=dict(title='learning rate'))
+    trigger_times = 0
     for epoch in range(epochs):
         model.train()
         for step, (x, y, c, id) in tqdm(enumerate(train_loader)):
@@ -299,7 +320,8 @@ def train():
                     seg_loss += F.huber_loss(label, pred)
 
                 #label_segment_denormalized += denormalize(label)
-            loss = mape_loss(label_segment, pred_segment) + seg_loss/x.shape[1]
+            mape = mape_loss(label_segment, pred_segment)
+            loss = mape + seg_loss/x.shape[1]
             #loss = mape_loss(label_segment, pred_segment)
             #print(loss)
 
@@ -308,10 +330,12 @@ def train():
             optimizer.step()
 
         viz.line([loss.item()], [global_step], win='train_mse', update='append')
+        train_loss.append(loss.item())
         loss_mape = mape_loss(label_segment, pred_segment)
         viz.line([loss_mape.item()], [global_step], win='train_mape', update='append')
-        schedule.step(loss)
+        #schedule.step(loss)
         learning_rate = optimizer.state_dict()['param_groups'][0]['lr']
+
         viz.line([learning_rate], [global_step], win='learning rate', update='append')
         # print("epoch:", epoch, "test_mse:", loss)
         if epoch % 1 == 0:
@@ -323,13 +347,17 @@ def train():
                 best_epoch = epoch
                 best_mse = val_mse
                 torch.save(model.state_dict(), ckpt_path)
+            if best_epoch < epoch - patienceOfTrainingEpochs:
+                    break
             viz.line([val_mse.item()], [global_step], win='val_mse', update='append')
 
             viz.line([val_mape.item()], [global_step], win='val_mape', update='append')
             #schedule.step(val_mse)
         global_step += 1
-    print("best_epoch:", best_epoch, "best_mape(%):", np.array(best_mape.cpu())*100, "best_mse:", np.array(best_mse.cpu()))
 
+    print("best_epoch:", best_epoch, "best_mape(%):", np.array(best_mape.cpu())*100, "best_mse:", np.array(best_mse.cpu()))
+    np.savetxt('trainLossConstgat.csv', train_loss, delimiter=',')
+    print("training epochs: {}".format(len(train_loss)))
 
 def test(model, test_path_length, test_pace, output = False):
     """
@@ -339,7 +367,7 @@ def test(model, test_path_length, test_pace, output = False):
     """
 
     # load an existing model.
-    test_db = ObdData(root=data_root, mode="test",fuel=False, percentage=20, window_size=window_sz,\
+    test_db = ObdData(root=data_root, mode="test",fuel=True, percentage=20, window_size=window_sz,\
                       path_length=test_path_length, label_dimension=output_dimension, pace=test_pace,
                       withoutElevation=False)
 
@@ -389,7 +417,7 @@ def main(mode, output = False):
 if __name__ == '__main__':
     #main("test")
     #main("test", output = True)
-    main("train")
+    main(mode)
 
 # 602 parameters
 # test_length_path = [1,2,5,10,20,50,100,200,500]

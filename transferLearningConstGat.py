@@ -255,6 +255,7 @@ def train():
     viz.line([0], [-1], win='train_mape', opts=dict(title='train_mape'))
     viz.line([0], [-1], win='val_mape', opts=dict(title='val_mape'))
     viz.line([0], [-1], win='learning rate', opts=dict(title='learning rate'))
+    train_loss = []
     for epoch in range(epochs):
         model.train()
         for step, (x, y, c, id) in tqdm(enumerate(train_loader)):
@@ -303,14 +304,15 @@ def train():
                 else:
                     seg_loss += F.huber_loss(label, pred)
                 #label_segment_denormalized += denormalize(label)
-            loss = mape_loss(label_segment, pred_segment) + seg_loss/x.shape[1]
+            mape = mape_loss(label_segment, pred_segment)
+            loss = mape + seg_loss/x.shape[1]
             #loss = mape_loss(label_segment, pred_segment)
             #print(loss)
 
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-
+        train_loss.append(mape.item())
         viz.line([loss.item()], [global_step], win='train_mse', update='append')
         loss_mape = mape_loss(label_segment, pred_segment)
         viz.line([loss_mape.item()], [global_step], win='train_mape', update='append')
@@ -333,7 +335,7 @@ def train():
             #schedule.step(val_mse)
         global_step += 1
     print("best_epoch:", best_epoch, "best_mape(%):", np.array(best_mape.cpu())*100, "best_mse:", np.array(best_mse.cpu()))
-
+    np.savetxt('trainLossConstgatTransfer.csv', train_loss, delimiter=',')
 
 def test(model, test_path_length, test_pace, output = False):
     """
@@ -391,9 +393,9 @@ def main(mode, output = False):
 
 
 if __name__ == '__main__':
-    main("test")
+    #main("test")
     #main("test", output = True)
-    #main("train")
+    main("train")
 
 # 602 parameters
 # test_length_path = [1,2,5,10,20,50,100,200,500]

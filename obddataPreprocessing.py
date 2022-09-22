@@ -55,7 +55,7 @@ def loadData(root="data_normalized", mode = "train", fuel=False, percentage=20, 
 
     numerical_dimension = 5 if withoutElevation else 6
 
-    inputFileName =  mode+"_data_fuel.csv" if fuel else mode+"_data.csv"
+    inputFileName = mode+"_data_fuel.csv" if fuel else mode+"_data.csv"
     data_x, data_y, data_c, id = processAndSave(root, inputFileName, fuel, window_size, path_length, label_dimension, numerical_dimension, pace, withoutElevation)
     return data_x, data_y, data_c, id
 
@@ -156,10 +156,14 @@ def processAndSave(root, filename, fuel, windowsz, path_length, label_dimension,
                 data_trip_k = [[x] for x in data_trip[j + k]]
                 data_trip_j = [x + y for x, y in zip(data_trip_j, data_trip_k)]
             data_list_path.append(data_trip_j)
+    # x: numerical features [batch, path length, window size, feature dimension]
     data_x = torch.Tensor([x[0] for x in data_list_path]).to(device)
     # print(self.data_x[0,...].shape)
+    # y: label [batch, path length, window size, (label dimension)]
     data_y = torch.Tensor([x[1] for x in data_list_path]).to(device)
+    # c: categorical features [batch, number of categorical features, path length, window size]
     data_c = torch.LongTensor([x[5:12] for x in data_list_path]).to(device)
+    # [batch, window size]
     id = torch.LongTensor([x[-1] for x in data_list_path]).to(device)
     return data_x, data_y, data_c, id
 

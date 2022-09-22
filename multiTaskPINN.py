@@ -103,13 +103,12 @@ def vt2t(velocityProfile, length):
     :param length: total length of the segment
     :return: tAxis: the axis of time of the velocity profile
     '''
-    mul = torch.cat([torch.ones([1, 1]), 2 * torch.ones([velocityProfile.shape[1] - 2, 1]),\
-                       torch.ones([1, 1])], dim=0).to(device)
+    mul = torch.cat([torch.ones([1, 1]), 2 * torch.ones([velocityProfile.shape[1] - 2, 1]),torch.ones([1, 1])], dim=0).to(device)
     # mul =  2 * torch.ones([velocityProfile.shape[1], 1]).to(device)
     # mul[0,0] = mul[-1,0]= 1
     vAverage = torch.matmul(velocityProfile, mul) / 2
-    # vAverage_tensor = (velocityProfile[:, :-1] + velocityProfile[:, 1:]) / 2
-    # vAverage = torch.sum(vAverage_tensor, dim=1).unsqueeze(-1)
+    #vAverage_tensor = (velocityProfile[:, :-1] + velocityProfile[:, 1:]) / 2
+    #vAverage = torch.sum(vAverage_tensor, dim=1).unsqueeze(-1)
     #print(vAverage_1, vAverage)
     #assert torch.equal(vAverage_1, vAverage)
     tForOnePart = length.unsqueeze(-1) / vAverage
@@ -182,7 +181,7 @@ def vt2fuel(v,a,t,m,sin_theta ):
 def calLossOfPath(model,x,y,c,id , mode = 'time',output = False):
     segCriterion = nn.HuberLoss()
     #segCriterion = nn.L1Loss()
-    pathCriterion = nn.MSELoss()
+    pathCriterion = nn.HuberLoss()
     maeCriterion = nn.L1Loss()
     #accCriterion = nn.L1Loss()
     jerkCriterion = nn.MSELoss()
@@ -220,7 +219,7 @@ def calLossOfPath(model,x,y,c,id , mode = 'time',output = False):
         v, t = vt2t(velocityProfile, length)
         acc = vt2a(v, t)
         jerk = vt2a(acc, t)
-        zeros = torch.zeros(acc.shape).to(device)
+        zeros = torch.zeros(acc.shape,requires_grad=False).to(device)
         #print('v/acc/jerk',v,acc,jerk)
 
 
@@ -254,14 +253,15 @@ def calLossOfPath(model,x,y,c,id , mode = 'time',output = False):
         csvFile.close()
     mape = mape_loss(label_segment, pred_segment)
     mae = maeCriterion(label_segment, pred_segment)
-    mse = pathCriterion(label_segment, pred_segment)
+    pathLoss = pathCriterion(label_segment, pred_segment)
+
     coefficient = config.params.omega_time if mode == 'time' else config.params.omega_fuel
     if coefficient != 0:
-        totalLoss = mape + (seg_loss + config.params.omega_jerk * config.params.lengthOfVelocityProfile * jerk_loss / coefficient)/x.shape[1]
+        totalLoss = config.params.pathLossWeight * mape + (seg_loss + config.params.omega_jerk * config.params.lengthOfVelocityProfile * jerk_loss / coefficient)/x.shape[1]
     else:
-        totalLoss = mape + (seg_loss + config.params.omega_jerk * config.params.lengthOfVelocityProfile * jerk_loss / 1)/x.shape[1]
+        totalLoss = config.params.pathLossWeight * mape + (seg_loss + config.params.omega_jerk * config.params.lengthOfVelocityProfile * jerk_loss )/x.shape[1]
     #print('mse',mse,seg_loss,jerk_loss)
-    return totalLoss, mape,  mse, mae, y.shape[0]
+    return totalLoss, mape,  pathLoss, mae, y.shape[0]
     #return mse , mape, y.shape[0]
 
 
@@ -308,8 +308,6 @@ def eval(model, loader_time, loader_fuel, output = False):
             #print(label_segment, pred_segment, mape_loss(label_segment, pred_segment))
             cnt += cnt_add
     return loss_total/cnt, loss_fuel_total/cnt, loss_time_total/cnt, loss_mape_fuel_total/cnt, loss_mape_time_total/cnt , mse_fuel_total/cnt, mse_time_total/cnt, mae_fuel_total/cnt, mae_time_total/cnt
-
-
 
 
 def train():
@@ -368,8 +366,7 @@ def train():
 
     optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=config.params.lr,
                            betas=(config.params.beta_1, config.params.beta_2), eps=config.params.eps)
-    schedule = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="min", factor=0.5,
-                                                    patience=config.params.patienceOfTrainingEpochs)
+    #schedule = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="min", factor=0.5,  patience=config.params.patienceOfTrainingEpochs)
     train_loss = []
     #for p in filter(lambda p: p.requires_grad, model.parameters()): print(p)
     #criterion = nn.MSELoss()
@@ -403,12 +400,11 @@ def train():
 
             # For each batch, predict fuel consumption/time for each segment in a path and sum them
             # [batch size, output dimension]
-
             mse_time, loss_mape_time, _,_,_ = calLossOfPath(model, xt, yt, ct, idt, mode='time')
             mse_fuel, loss_mape_fuel, _,_,_ = calLossOfPath(model, xf, yf, cf, idf, mode='fuel')
 
             #loss = mape_loss(label_path, pred_path)
-            #print('loss',loss_fuel,loss_time)
+            #print('loss', config.params.omega_fuel,config.params.omega_time)
             loss = config.params.omega_fuel*mse_fuel + config.params.omega_time*mse_time
             #print(loss)
             optimizer.zero_grad()
@@ -424,8 +420,8 @@ def train():
         # viz.line([loss_mape_fuel.item()], [global_step], win='train_fuel_mape', update='append')
         # viz.line([loss_mape_time.item()], [global_step], win='train_time_mape', update='append')
         train_loss.append(loss.item())
-        schedule.step(loss)
-        learning_rate = optimizer.state_dict()['param_groups'][0]['lr']
+        #schedule.step(loss)
+        #learning_rate = optimizer.state_dict()['param_groups'][0]['lr']
 
         #viz.line([learning_rate], [global_step], win='learning rate', update='append')
 
@@ -435,10 +431,15 @@ def train():
             # schedule.step(val_mse)
             #print("epoch:", epoch, "val_mape_fuel(%):", np.array(val_fuel_mape.cpu())*100,"val_mape_time(%):", np.array(val_time_mape.cpu())*100, "val_mse:", np.array(val_mse.cpu()))
             #print("epoch:", epoch,  "train_mse:", loss.item())
+            #print('val_loss:{val}, best_loss:{best}, trigger_times:{tr}'.format(val=val_mse,best=best_mse, tr=trigger_times))
             if val_mse < best_mse:
                 best_epoch = epoch
                 best_mse = val_mse
                 torch.save(model.state_dict(), config.params.ckpt_path)
+            if best_epoch < epoch - config.params.patienceOfTrainingEpochs:
+                break
+
+
             # viz.line([val_mse.item()], [global_step], win='val_mse', update='append')
             # viz.line([mse_fuel.item()], [global_step], win='val_fuel_mse', update='append')
             # viz.line([mse_time.item()], [global_step], win='val_time_mse', update='append')
@@ -446,8 +447,6 @@ def train():
             # viz.line([val_time_mape.item()], [global_step], win='val_time_mape', update='append')
 
         global_step += 1
-        if learning_rate < config.params.lr:
-            break
     #print("best_epoch:", best_epoch, "best_mse:", np.array(best_mse.cpu()))
     #np.savetxt('trainLossPiNNwithoutJerk.csv', train_loss, delimiter=',')
     #print("training epochs: {}".format(len(train_loss)))
@@ -472,7 +471,7 @@ def test(model, test_path_length, test_pace, output = False):
 
     test_loader_time = DataLoader(test_db_time, batch_size=config.params.batchsz, num_workers=0)
     test_loader_fuel = DataLoader(test_db_fuel, batch_size=config.params.batchsz, num_workers=0)
-    #print(model)
+    print(model)
     #p = sum(map(lambda p: p.numel(), model.parameters()))
     #print("number of parameters:", p)
     test_mse,_,_, test_fuel_mape, test_time_mape, mse_fuel, mse_time, mae_fuel, mae_time = eval(model, test_loader_time, test_loader_fuel, output=output)
@@ -519,9 +518,9 @@ def trainTest(mode, output = False):
         return
 
 def gridSearch(windowSizeList: List[int], jerkPenaltyList: List[float], ecotollWeightList: List[float]):
-    for i in range(11,12):
+    for i in range(11,21):
         outputFileName = 'mapeOfAllParams/mapeForDataSet{}.csv'.format(i-10)
-        config.params.data_root = "ExpDataset/recursion{}".format(i)
+        config.params.data_root = "ExpDataset/recursion10.0perc{}".format(i)
         dfOfMape = pd.DataFrame(columns=['Epochs', 'path length 1', 'path length 2',
                                                             'path length 5', 'path length 10', 'path length 20',
                                                             'path length 50', 'path length 100', 'path length 200'])
@@ -529,18 +528,19 @@ def gridSearch(windowSizeList: List[int], jerkPenaltyList: List[float], ecotollW
         for windowSize in windowSizeList:
             for jerkPenalty in jerkPenaltyList:
                 for ecotollWeight in ecotollWeightList:
-                    for heads in [1,2,4,8]:
+                    for pathLossWeight in [1]:
                         config.params.window_sz = windowSize
                         config.params.omega_jerk = jerkPenalty
                         config.params.omega_fuel = ecotollWeight
                         config.params.omega_time = 1 - ecotollWeight
-                        config.params.head_number = heads
-                        print('windowsize:{wsz},jerkWeight:{jerk},ecotollWeight:{ecotollWeight},Dataset:{numberOfDataset},head_number:{l} '\
-                              .format(wsz=windowSize, jerk=jerkPenalty, ecotollWeight=ecotollWeight, numberOfDataset=i-10, l=heads))
+                        config.params.pathLossWeight = pathLossWeight
+                        print('windowsize:{wsz},jerkWeight:{jerk},ecotollWeight:{ecotollWeight},Dataset:{numberOfDataset},pathLossWeight:{l} '\
+                              .format(wsz=windowSize, jerk=jerkPenalty, ecotollWeight=ecotollWeight, numberOfDataset=i-10, l=pathLossWeight))
                         trainEpochs = train()
-                        mapeList = trainTest(mode='test')
+                        mapeList = trainTest(mode='test',output=False)
                         dfOfMape = pd.concat([dfOfMape, pd.DataFrame([[trainEpochs] + mapeList], columns=dfOfMape.columns)], ignore_index=True)
-                        indexList.append('windowsz{wsz}jerk{jerk}ecotoll{ecotollWeight}head_number{l}'.format(wsz=windowSize,jerk=jerkPenalty, ecotollWeight =ecotollWeight, l=heads ))
+                        indexList.append('windowsz{wsz}jerk{jerk}ecotoll{ecotollWeight}pathLossWeight{l}'.format(wsz=windowSize,jerk=jerkPenalty, ecotollWeight =ecotollWeight, l=pathLossWeight ))
+                        print(dfOfMape)
         dfOfMape.index = indexList
         dfOfMape.to_csv(outputFileName)
 
@@ -564,18 +564,21 @@ def sensitivityAnalysis(*paramList):
         dfOfMape = pd.DataFrame(columns=['Epochs', 'path length 1', 'path length 2',
                                          'path length 5', 'path length 10', 'path length 20',
                                          'path length 50', 'path length 100', 'path length 200'])
-        for i in range(11,16):
-            config.params.data_root = "ExpDataset/recursion{}".format(i)
+        for i in range(11,12):
+            config.params.data_root = "ExpDataset/recursion5perc{}".format(i)
             trainEpochs = train()
-            mapeList = trainTest(mode='test')
+            mapeList = trainTest(mode='test',output=False)
             dfOfMape = pd.concat([dfOfMape, pd.DataFrame([[trainEpochs] + mapeList], columns=dfOfMape.columns)], ignore_index=True)
+            print(dfOfMape)
+            dfOfMape.to_csv(outputFileName, index=False)
         dfOfMape.to_csv(outputFileName,index=False)
 
 
 if __name__ == '__main__':
-    #trainTest(input("mode="), output = False)
-    #gridSearch(windowSizeList=[1, 3, 5], jerkPenaltyList=[0, 1e-6, 1e-7], ecotollWeightList=[0, 0.6, 0.9, 1])
-    sensitivityAnalysis([3,1e-3,0.6],[1,1e-3,0.6],[3,1e-3,1])
+    trainTest(input("mode="), output = False)
+    #gridSearch(windowSizeList=[3], jerkPenaltyList=[1e-6], ecotollWeightList=[1, 0.6,0.5, 0.4,0.2])
+    #sensitivityAnalysis( [3,1e-8,0.2])
+    #sensitivityAnalysis([3, 1e-6, 0.2])
     #main("test")
     #main("train")
     # main("test", output = True)

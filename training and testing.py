@@ -316,7 +316,7 @@ def test(test_path_length, test_pace, output = False):
     else:
         print('Error: no existing model')
     model.to(device)
-    #print(model)
+    print(model)
     p = sum(map(lambda p: p.numel(), model.parameters()))
     #print("number of parameters:", p)
     test_mape, test_mse = eval(model, test_loader, output = output)
@@ -346,6 +346,6 @@ def main(mode, output = False):
 
 
 if __name__ == '__main__':
-    #main("test")
-    main("test", output = True)
+    main("test")
+    #main("test", output = True)
     #main("train")
