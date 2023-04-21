@@ -167,7 +167,7 @@ def vt2fuel(v,a,t,m,sin_theta ):
     #m = 10000  # mass (kg)
     rho = 1.225  # density of air (kg/m^3)
     #theta = 0  # road grade (degrees)
-    fc = 40.3  # fuel consumption (kWh/gal) # Diesel ~40.3 kWh/gal
+    fc = 40.3  # fuel consumption (kWh/gal) # Diesel ~40.3 kWh/gal90
     eff = 0.56  # efficiency of engine
 
     P = power(v, a, m, sin_theta, rho)
@@ -205,6 +205,7 @@ def calLossOfPath(model,x,y,c,id , mode = 'time',output = False):
         # [batch size, output dimension]
         label_segment += label
 
+        #print(x_segment.shape, c_segment.shape, id_segment.shape)
         # [batch size, lengthOfVelocityProfile]
         # offset to make sure the average velocity is higher than 0
         velocityProfile = model(x_segment, c_segment, id_segment)
@@ -259,8 +260,8 @@ def calLossOfPath(model,x,y,c,id , mode = 'time',output = False):
     if coefficient != 0:
         totalLoss = config.params.pathLossWeight * mape + (seg_loss + config.params.omega_jerk * config.params.lengthOfVelocityProfile * jerk_loss / coefficient)/x.shape[1]
     else:
-        totalLoss = config.params.pathLossWeight * mape + (seg_loss + config.params.omega_jerk * config.params.lengthOfVelocityProfile * jerk_loss )/x.shape[1]
-    #print('mse',mse,seg_loss,jerk_loss)
+        totalLoss = config.params.pathLossWeight * mape + (seg_loss + config.params.omega_jerk * config.params.lengthOfVelocityProfile * jerk_loss)/x.shape[1]
+    #('seg_loss',seg_loss, 'jerk_loss', jerk_loss, 'mape', mape)
     return totalLoss, mape,  pathLoss, mae, y.shape[0]
     #return mse , mape, y.shape[0]
 
@@ -356,7 +357,6 @@ def train():
         if p.dim() > 1:
             nn.init.xavier_uniform_(p)
     model.to(device)
-    model.n2v.load_state_dict(torch.load('node2vec.mdl'))
     model.n2v.embedding.weight.requires_grad = False
     #print(model)
     #print(next(model.parameters()).device)
@@ -429,7 +429,7 @@ def train():
         if epoch % 1 == 0:
             val_mse, val_loss_fuel,val_loss_time, val_fuel_mape, val_time_mape, mse_fuel, mse_time, mae_fuel, mae_time = eval(model,val_loader_time, val_loader_fuel)
             # schedule.step(val_mse)
-            #print("epoch:", epoch, "val_mape_fuel(%):", np.array(val_fuel_mape.cpu())*100,"val_mape_time(%):", np.array(val_time_mape.cpu())*100, "val_mse:", np.array(val_mse.cpu()))
+            print("epoch:", epoch, "val_mape_fuel(%):", np.array(val_fuel_mape.cpu())*100, "val_mse:", np.array(val_mse.cpu()))
             #print("epoch:", epoch,  "train_mse:", loss.item())
             #print('val_loss:{val}, best_loss:{best}, trigger_times:{tr}'.format(val=val_mse,best=best_mse, tr=trigger_times))
             if val_mse < best_mse:
@@ -555,7 +555,7 @@ def sensitivityAnalysis(*paramList):
         windowSize = params[0]
         jerkPenalty = params[1]
         ecotollWeight = params[2]
-        outputFileName = 'mapeOfAllParams/windowsz{wsz}jerk{jerk}ecotoll{ecotollWeight}.csv'\
+        outputFileName = 'mapeOfAllParams/Newwindowsz{wsz}jerk{jerk}ecotoll{ecotollWeight}.csv'\
             .format(wsz=windowSize,jerk=jerkPenalty, ecotollWeight =ecotollWeight)
         config.params.window_sz = windowSize
         config.params.omega_jerk = jerkPenalty
@@ -564,8 +564,9 @@ def sensitivityAnalysis(*paramList):
         dfOfMape = pd.DataFrame(columns=['Epochs', 'path length 1', 'path length 2',
                                          'path length 5', 'path length 10', 'path length 20',
                                          'path length 50', 'path length 100', 'path length 200'])
-        for i in range(11,12):
+        for i in range(11,21):
             config.params.data_root = "ExpDataset/recursion5perc{}".format(i)
+            #config.params.data_root = "ExpDataset/recursion{}".format(i)
             trainEpochs = train()
             mapeList = trainTest(mode='test',output=False)
             dfOfMape = pd.concat([dfOfMape, pd.DataFrame([[trainEpochs] + mapeList], columns=dfOfMape.columns)], ignore_index=True)
@@ -575,10 +576,10 @@ def sensitivityAnalysis(*paramList):
 
 
 if __name__ == '__main__':
-    trainTest(input("mode="), output = False)
+    #trainTest(input("mode="), output = False)
     #gridSearch(windowSizeList=[3], jerkPenaltyList=[1e-6], ecotollWeightList=[1, 0.6,0.5, 0.4,0.2])
     #sensitivityAnalysis( [3,1e-8,0.2])
-    #sensitivityAnalysis([3, 1e-6, 0.2])
+    sensitivityAnalysis([3,1e-6, 0.2])
     #main("test")
     #main("train")
     # main("test", output = True)
